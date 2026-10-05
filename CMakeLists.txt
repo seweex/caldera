@@ -10,4 +10,21 @@ project(caldera
     VERSION 0.0.1
     LANGUAGES CXX)
 
-add_executable(hello-world src/main.cpp)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    message(STATUS "Enabling ASan and UBSan")
+
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
+
+    add_link_options(-fsanitize=address,undefined)
+endif()
+
+find_program(IWYU_PATH NAMES include-what-you-use iwyu)
+if(IWYU_PATH)
+    set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH};-Xiwyu;--no_comments)
+endif()
+
+find_package(Vulkan REQUIRED)
+find_package(VulkanMemoryAllocator REQUIRED)
+
+add_subdirectory(render-graph)
+add_subdirectory(examples/creating)
