@@ -6,4 +6,4 @@ It is written on modern C++20
 
 ## Architecture
 
-Detailed plan of this project is written in [ARCH.md](ARCH.md).
+Detailed plan of this project is written in [ARCH.md](ARCH-OLD.md).
