@@ -58,13 +58,13 @@ namespace
             {
                 auto const& touch = versionList[0].readings[0];
 
-                lastToucher = 0;
+                lastToucher = touch.passIdx;
                 lastTouch = translator.translate_usage(touch.family, touch.usage, caldera::detail::AccessKind::read);
             }
             else {
                 auto const& touch = versionList[1].writing;
 
-                lastToucher = 1;
+                lastToucher = touch.passIdx;
                 lastTouch = translator.translate_usage(touch.family, touch.usage, caldera::detail::AccessKind::write);
             }
 
@@ -106,11 +106,11 @@ namespace
                 lastToucher = toucher.passIdx;
             };
 
-            bool firstVersion = true;
+            bool firstProcession = true;
 
             for (auto const& [writing, readings] : versionList | std::views::drop(1))
             {
-                if (!firstVersion || lastToucher != 1)
+                if (lastToucher != writing.passIdx)
                     revealAndPushBarriers(writing, caldera::detail::AccessKind::write);
 
                 if (!readings.empty())
@@ -122,7 +122,7 @@ namespace
                         revealAndPushBarriers(reading, caldera::detail::AccessKind::read);
                 }
 
-                firstVersion = false;
+                firstProcession = false;
             }
         }
     }

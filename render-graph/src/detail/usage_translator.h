@@ -18,5 +18,7 @@ namespace caldera::detail
 
         [[nodiscard]] vk::BufferUsageFlags translate_flags(
             BufferUsage usage, AccessKind access) const noexcept;
+
+        [[nodiscard]] vk::ImageAspectFlags get_aspect(ImageUsage usage) const noexcept;
     };
 }

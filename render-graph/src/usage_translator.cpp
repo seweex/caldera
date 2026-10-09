@@ -332,4 +332,20 @@ namespace caldera::detail
     {
         return ::buffer_usage_to_vk(usage, access);
     }
+
+    vk::ImageAspectFlags UsageTranslator::get_aspect(
+        ImageUsage const usage) const noexcept
+    {
+        switch (usage)
+        {
+        case ImageUsage::transfer:                  return {};
+        case ImageUsage::sampled:                   return {};
+        case ImageUsage::storage:                   return {};
+        case ImageUsage::color_attachment:          return vk::ImageAspectFlagBits::eColor;
+        case ImageUsage::depth_stencil_attachment:  return vk::ImageAspectFlagBits::eDepth;
+        case ImageUsage::input_attachment:          return {};
+        case ImageUsage::resolve_attachment:        return {};
+        case ImageUsage::host:                      return {};
+        }
+    }
 }

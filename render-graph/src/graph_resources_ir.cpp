@@ -32,6 +32,23 @@ namespace
         return result;
     }
 
+    [[nodiscard]] vk::ImageAspectFlags
+    get_aspect_flags(std::vector<caldera::detail::ImageVersionDesc> const& versionList) noexcept
+    {
+        vk::ImageAspectFlags result = {};
+        caldera::detail::UsageTranslator translator;
+
+        for (auto const& version : versionList)
+        {
+            result |= translator.get_aspect(version.writing.usage);
+
+            for (auto const& reading : version.readings)
+                result |= translator.get_aspect(reading.usage);
+        }
+
+        return result;
+    }
+
     void append_tracked_infos(
         auto& tracked,
         auto const& table,
@@ -48,14 +65,16 @@ namespace
         {
             auto& trackedInfo = tracked[resourceID];
 
-            if constexpr (std::same_as<IDTy, ImageID>)
-                if (descriptions)
+            if constexpr (std::same_as<IDTy, ImageID>) {
+                if (resourceID.is_transient)
                 {
-                    assert(resourceID.is_transient);
-
                     auto const& desc = descriptions->at(resourceID.index);
                     trackedInfo.aspects = get_aspect_flags(desc.format);
                 }
+                else {
+                    trackedInfo.aspects = get_aspect_flags(versionList);
+                }
+            }
 
             // if (!versionList[0].readings.empty())
             //     trackedInfo.firstFamily = versionList[0].readings[0].family;
