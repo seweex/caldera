@@ -1,3 +1,4 @@
+#include <iostream>
 #include <caldera/graph_executor.h>
 #include <caldera/structs.h>
 
@@ -13,6 +14,31 @@
 #include "detail/resource_state_manager.h"
 #include "detail/semaphore_map.h"
 #include "detail/utility.h"
+
+namespace
+{
+    template <class TagTy>
+    void print_barrier_group(
+        uint32_t passIdx,
+        auto const& group)
+    {
+        for (auto const& barrier : group)
+        {
+            if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+                std::cout << "Barrier of IMAGE #" << barrier.image << "\n";
+            else
+                std::cout << "Barrier of BUFFER #" << barrier.buffer << "\n";
+
+            std::cout << "  Access: " << vk::to_string(barrier.srcAccessMask) << " ==> " << vk::to_string(barrier.dstAccessMask) << "\n";
+            std::cout << "  Stages: " << vk::to_string(barrier.srcStageMask) << " ==> " << vk::to_string(barrier.dstStageMask) << "\n";
+
+            if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+                std::cout << "  Layout: " << vk::to_string(barrier.oldLayout) << " ==> " << vk::to_string(barrier.newLayout) << "\n";
+
+            std::cout << "  Family: " << barrier.srcQueueFamilyIndex << " ==> " << barrier.srcQueueFamilyIndex << "\n";
+        }
+    }
+}
 
 namespace
 {
@@ -136,9 +162,16 @@ namespace
         auto const& imageGroup,
         auto const& bufferGroup)
     {
-        vk::DependencyInfo info;
-        info.setImageMemoryBarriers(imageGroup);
-        info.setBufferMemoryBarriers(bufferGroup);
+        if (imageGroup.empty() && bufferGroup.empty())
+            return;
+
+        vk::DependencyInfo info {};
+
+        if (!imageGroup.empty())
+            info.setImageMemoryBarriers(imageGroup);
+
+        if (!bufferGroup.empty())
+            info.setBufferMemoryBarriers(bufferGroup);
 
         cmd.pipelineBarrier2(info);
     }
@@ -164,8 +197,10 @@ namespace
             for (auto const& [otherPassIdx, stages] : passBarriers[passIdx].waitDeps)
             {
                 auto const family = passInfos[otherPassIdx].family;
-                auto const semaphore = caldera::SemaphoreMap
+                auto semaphore = caldera::SemaphoreMap
                     ::ExecutorAttorney::get_semaphore(semaphoreMap, family);
+
+                ++semaphore.timeline;
 
                 auto& signal = result[otherPassIdx].signalSemaphores;
 
@@ -178,6 +213,8 @@ namespace
 
                 result[passIdx].waitSemaphores.emplace_back(
                    semaphore.handle, semaphore.timeline + otherPassIdx, stages);
+
+                semaphoreMap.update_timeline(family, semaphore.timeline);
             }
 
         return result;
@@ -249,6 +286,18 @@ namespace caldera
             auto const& passInfo = compiled.passes[passIdx];
             auto const& barriers = translatedBarriers[passIdx];
             auto const& semaphores = translatedSemaphores[passIdx];
+
+            if (0) {
+                std::cout << "\n=== In Pass #" << passIdx << " ===\n";
+                std::cout << "=- Pre-barriers -=\n";
+
+                ::print_barrier_group<ImageTag>(passIdx, barriers.imagePreBarriers);
+                ::print_barrier_group<BufferTag>(passIdx, barriers.bufferPreBarriers);
+
+                std::cout << "=- Post-barriers -=\n";
+                ::print_barrier_group<ImageTag>(passIdx, barriers.imagePostBarriers);
+                ::print_barrier_group<BufferTag>(passIdx, barriers.bufferPostBarriers);
+            }
 
             auto const cmd = CommandBufferDistributor
                 ::ConsumerAttorney::take_buffer(*context.distributor, passInfo.family);
