@@ -1,5 +1,5 @@
-#include "detail/access_resolver.h"
 #include <cassert>
+#include <caldera/detail/access_resolver.hpp>
 
 namespace
 {
@@ -14,96 +14,136 @@ namespace
         vk::AccessFlagBits2::eAccelerationStructureWriteKHR |
         vk::AccessFlagBits2::eTransformFeedbackWriteEXT |
         vk::AccessFlagBits2::eTransformFeedbackCounterWriteEXT;
+
+    template <class TagTy>
+    [[nodiscard]] caldera::detail::HazardType has_hazards(
+        caldera::FamilyNumbers const& families,
+        auto const& src,
+        auto const& dst)
+    {
+        auto const srcFamily = families.get(src.family);
+        auto const dstFamily = families.get(dst.family);
+
+        if (srcFamily != dstFamily)
+            return caldera::detail::HazardType::ownership;
+
+        auto const hasAccessHazards =
+            static_cast<bool>((src.access | dst.access) & ::writing_masks);
+
+        bool layoutChanged;
+
+        if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+            layoutChanged = src.layout != dst.layout;
+        else
+            layoutChanged = false;
+
+        return (hasAccessHazards || layoutChanged)
+            ? caldera::detail::HazardType::access
+            : caldera::detail::HazardType::none;
+    }
 }
 
 namespace caldera::detail
 {
     HazardType AccessResolver::has_hazards(
-        ResourceTouch const& src,
-        ResourceTouch const& dst) const noexcept
+        FamilyNumbers const& families,
+        ImageTouch const& src,
+        ImageTouch const& dst) const noexcept
     {
-        if (src.family != dst.family && src.family != FamilyType::unknown && src.family != FamilyType::unknown)
-            return HazardType::ownership;
+        return ::has_hazards<ImageTag>(families, src, dst);
+    }
 
-        auto const hasAccessHazards =
-            static_cast<bool>((src.access | dst.access) & ::writing_masks);
-
-        auto const layoutChanged = src.layout != dst.layout;
-
-        return (hasAccessHazards || layoutChanged) ? HazardType::access : HazardType::none;
+    HazardType AccessResolver::has_hazards(
+        FamilyNumbers const& families,
+        BufferTouch const& src,
+        BufferTouch const& dst) const noexcept
+    {
+        return ::has_hazards<BufferTag>(families, src, dst);
     }
 
     ImageBarrier AccessResolver::resolve_access_hazard(
         ImageID const image,
-        ResourceTouch const& src,
-        ResourceTouch const& dst) const noexcept
+        ImageTouch const& src,
+        ImageTouch const& dst,
+        ImageTrackedInfo const& trackedInfo) const noexcept
     {
-        assert(src.family == dst.family ||
-            src.family == FamilyType::unknown ||
-            dst.family == FamilyType::unknown);
-
         return ImageBarrier {
-            .image     = image,
-            .srcStage  = src.stages,
+            .srcStages = src.stages,
             .srcAccess = src.access,
-            .dstStage  = dst.stages,
+            .dstStages = dst.stages,
             .dstAccess = dst.access,
             .oldLayout = src.layout,
             .newLayout = dst.layout,
-            .srcFamily = FamilyType::unknown,
-            .dstFamily = FamilyType::unknown
+            .srcFamilyIdx = vk::QueueFamilyIgnored,
+            .dstFamilyIdx = vk::QueueFamilyIgnored,
+            .id = image,
+            .subresourceRange = {
+                trackedInfo.aspect,
+                0, vk::RemainingMipLevels,
+                0, vk::RemainingArrayLayers
+            }
         };
     }
 
     BufferBarrier AccessResolver::resolve_access_hazard(
         BufferID const buffer,
-        ResourceTouch const& src,
-        ResourceTouch const& dst) const noexcept
+        BufferTouch const& src,
+        BufferTouch const& dst,
+        BufferTrackedInfo const&) const noexcept
     {
-        assert(src.family == dst.family ||
-            src.family == FamilyType::unknown ||
-            dst.family == FamilyType::unknown);
-
         return BufferBarrier {
-            .buffer    = buffer,
-            .srcStage  = src.stages,
+            .srcStages = src.stages,
             .srcAccess = src.access,
-            .dstStage  = dst.stages,
+            .dstStages = dst.stages,
             .dstAccess = dst.access,
-            .srcFamily = FamilyType::unknown,
-            .dstFamily = FamilyType::unknown,
+            .srcFamilyIdx = vk::QueueFamilyIgnored,
+            .dstFamilyIdx = vk::QueueFamilyIgnored,
+            .id = buffer
         };
     }
 
     std::array<ImageBarrier, 2> AccessResolver::resolve_ownership_hazard(
         ImageID const image,
-        ResourceTouch const& src,
-        ResourceTouch const& dst) const noexcept
+        FamilyNumbers const& families,
+        ImageTouch const& src,
+        ImageTouch const& dst,
+        ImageTrackedInfo const& trackedInfo) const noexcept
     {
-        assert(src.family != dst.family);
+        auto const srcFamily = families.get(src.family);
+        auto const dstFamily = families.get(src.family);
 
         ImageBarrier const release {
-            .image     = image,
-            .srcStage  = src.stages,
+            .srcStages = src.stages,
             .srcAccess = src.access,
-            .dstStage  = vk::PipelineStageFlagBits2::eNone,
+            .dstStages = vk::PipelineStageFlagBits2::eNone,
             .dstAccess = vk::AccessFlagBits2::eNone,
             .oldLayout = src.layout,
             .newLayout = dst.layout,
-            .srcFamily = src.family,
-            .dstFamily = dst.family
+            .srcFamilyIdx = srcFamily,
+            .dstFamilyIdx = dstFamily,
+            .id = image,
+            .subresourceRange = {
+                trackedInfo.aspect,
+                0, vk::RemainingMipLevels,
+                0, vk::RemainingArrayLayers
+            }
         };
 
         ImageBarrier const acquire {
-            .image     = image,
-            .srcStage  = vk::PipelineStageFlagBits2::eNone,
+            .srcStages = vk::PipelineStageFlagBits2::eNone,
             .srcAccess = vk::AccessFlagBits2::eNone,
-            .dstStage  = dst.stages,
+            .dstStages = dst.stages,
             .dstAccess = dst.access,
             .oldLayout = src.layout,
             .newLayout = dst.layout,
-            .srcFamily = src.family,
-            .dstFamily = dst.family
+            .srcFamilyIdx = srcFamily,
+            .dstFamilyIdx = dstFamily,
+            .id = image,
+            .subresourceRange = {
+                trackedInfo.aspect,
+                0, vk::RemainingMipLevels,
+                0, vk::RemainingArrayLayers
+            }
         };
 
         return { release, acquire };
@@ -111,29 +151,32 @@ namespace caldera::detail
 
     std::array<BufferBarrier, 2> AccessResolver::resolve_ownership_hazard(
         BufferID const buffer,
-        ResourceTouch const& src,
-        ResourceTouch const& dst) const noexcept
+        FamilyNumbers const& families,
+        BufferTouch const& src,
+        BufferTouch const& dst,
+        BufferTrackedInfo const&) const noexcept
     {
-        assert(src.family != dst.family);
+        auto const srcFamily = families.get(src.family);
+        auto const dstFamily = families.get(src.family);
 
         BufferBarrier const release {
-            .buffer    = buffer,
-            .srcStage  = src.stages,
+            .srcStages = src.stages,
             .srcAccess = src.access,
-            .dstStage  = vk::PipelineStageFlagBits2::eNone,
+            .dstStages = vk::PipelineStageFlagBits2::eNone,
             .dstAccess = vk::AccessFlagBits2::eNone,
-            .srcFamily = src.family,
-            .dstFamily = dst.family,
+            .srcFamilyIdx = srcFamily,
+            .dstFamilyIdx = dstFamily,
+            .id = buffer,
         };
 
         BufferBarrier const acquire {
-            .buffer    = buffer,
-            .srcStage  = vk::PipelineStageFlagBits2::eNone,
+            .srcStages = vk::PipelineStageFlagBits2::eNone,
             .srcAccess = vk::AccessFlagBits2::eNone,
-            .dstStage  = dst.stages,
+            .dstStages = dst.stages,
             .dstAccess = dst.access,
-            .srcFamily = src.family,
-            .dstFamily = dst.family,
+            .srcFamilyIdx = srcFamily,
+            .dstFamilyIdx = dstFamily,
+            .id = buffer,
         };
 
         return { release, acquire };

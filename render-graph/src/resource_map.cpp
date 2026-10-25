@@ -1,125 +1,87 @@
-#include <caldera/resource_map.h>
-#include <caldera/resource_id.h>
-
-#include "detail/resource_map.h"
+#include <caldera/resource_map.hpp>
+#include <caldera/resource_id.hpp>
 
 namespace
 {
-    [[nodiscard]] auto& choose_list(
-        auto& transientResources,
-        auto& externResources,
-        auto const id) noexcept
+    [[nodiscard]] auto get(
+        auto const id,
+        auto const& persistentResources,
+        auto const& transientResources,
+        auto const& filter)
     {
-        return id.is_transient ? transientResources : externResources;
+        assert(std::ranges::is_sorted(filter));
+
+        if (!filter.empty())
+            assert(std::ranges::binary_search(filter, id) && "unallowed resource was requested");
+
+        if (id.isTransient)
+            return transientResources[id.index].handle;
+        else
+            return persistentResources[id.index];
     }
 
-    template <class TagTy>
-    [[nodiscard]] auto alias_index(auto& externList, auto const resource)
-    {
-        auto const index = static_cast<uint32_t>(externList.size());
-
-        externList.emplace_back(resource);
-        return caldera::BasicResourceID<TagTy>{ 0, index };
-    }
-
-    void map_resource(
+    auto map(
         auto& list,
         auto const id,
-        auto const resource)
+        auto const handle)
     {
+        assert(!id.isTransient && "mapping of a transient resource is not allowed");
+
         if (list.size() <= id.index)
             list.resize(id.index + 1);
 
-        list[id.index] = resource;
+        list[id.index] = handle;
+        return id;
     }
 
-    [[nodiscard]] auto get_resource(auto& list, auto const id) {
-        return list[id.index];
-    }
-
-    [[nodiscard]] auto unmap_list(auto& list) {
-        for (auto& el : list)
-            el = VK_NULL_HANDLE;
+    template <class TagTy>
+    [[nodiscard]] auto generate_id(auto const& list)
+    {
+        return caldera::BasicResourceID<TagTy> {
+            .isTransient = 0,
+            .index = static_cast<uint32_t>(list.size()),
+            .version = 0
+        };
     }
 }
 
 namespace caldera
 {
-    /* Transient Attorney */
-
-    void ResourceMap::TransientAttorney::import_graph(
-        ResourceMap &map,
-        detail::AllocatedGraph const &graph)
-    {
-        auto& impl = *map.m_impl;
-
-        impl.transientImages = graph.images;
-        impl.transientBuffers = graph.buffers;
+    ImageID ResourceMap::map(vk::Image const image) {
+        auto const id = ::generate_id<ImageTag>(m_persistentImages);
+        return ::map(m_persistentImages, id, image);
     }
 
-    void ResourceMap::TransientAttorney::reset_transient(ResourceMap &map) noexcept
-    {
-        auto& impl = *map.m_impl;
-
-        ::unmap_list(impl.transientImages);
-        ::unmap_list(impl.transientBuffers);
+    BufferID ResourceMap::map(vk::Buffer const buffer) {
+        auto const id = ::generate_id<BufferTag>(m_persistentBuffers);
+        return ::map(m_persistentBuffers, id, buffer);
     }
 
-    /* Resource Map */
-
-    ResourceMap::ResourceMap() :
-        m_impl(std::make_unique<Impl>())
-    {}
-
-    ResourceMap::~ResourceMap() noexcept = default;
-
-    ResourceMap::ResourceMap(ResourceMap &&) noexcept = default;
-    ResourceMap & ResourceMap::operator=(ResourceMap &&) noexcept = default;
-
-    ImageID ResourceMap::alias(vk::Image const resource) {
-        return ::alias_index<ImageTag>(m_impl->externImages, resource);
+    void ResourceMap::map(ImageID const id, vk::Image const image) {
+        ::map(m_persistentImages, id, image);
     }
 
-    BufferID ResourceMap::alias(vk::Buffer const resource) {
-        return ::alias_index<BufferTag>(m_impl->externBuffers, resource);
-    }
-
-    void ResourceMap::map(ImageID const id, vk::Image const resource) {
-        auto& list = ::choose_list(m_impl->transientImages, m_impl->externImages, id);
-        ::map_resource(list, id, resource);
-    }
-
-    void ResourceMap::map(BufferID const id, vk::Buffer const resource) {
-        auto& list = ::choose_list(m_impl->transientBuffers, m_impl->externBuffers, id);
-        ::map_resource(list, id, resource);
-    }
-
-    void ResourceMap::unmap(ImageID const id) noexcept {
-        auto& list = ::choose_list(m_impl->transientImages, m_impl->externImages, id);
-        ::map_resource(list, id, VK_NULL_HANDLE);
-    }
-
-    void ResourceMap::unmap(BufferID const id) noexcept {
-        auto& list = ::choose_list(m_impl->transientBuffers, m_impl->externBuffers, id);
-        ::map_resource(list, id, VK_NULL_HANDLE);
+    void ResourceMap::map(BufferID const id, vk::Buffer const buffer) {
+        ::map(m_persistentBuffers, id, buffer);
     }
 
     vk::Image ResourceMap::at(ImageID const id) const {
-        auto& list = ::choose_list(m_impl->transientImages, m_impl->externImages, id);
-        return ::get_resource(list, id);
+        return ::get(id, m_persistentImages, m_transientResources->transientImages, m_allowedImages);
     }
 
     vk::Buffer ResourceMap::at(BufferID const id) const {
-        auto& list = ::choose_list(m_impl->transientBuffers, m_impl->externBuffers, id);
-        return ::get_resource(list, id);
+        return ::get(id, m_persistentBuffers, m_transientResources->transientBuffers, m_allowedBuffers);
     }
 
-    void ResourceMap::unmap_all() noexcept {
-        ::unmap_list(m_impl->transientImages);
-        ::unmap_list(m_impl->transientBuffers);
-        ::unmap_list(m_impl->externImages);
-        ::unmap_list(m_impl->externBuffers);
+    void ResourceMap::bind_resources(detail::GraphResources const &resources) noexcept {
+        m_transientResources = &resources;
     }
 
-
+    void ResourceMap::bind_resource_filters(
+        std::span<ImageID> const images,
+        std::span<BufferID> const buffers) noexcept
+    {
+        m_allowedImages = images;
+        m_allowedBuffers = buffers;
+    }
 }

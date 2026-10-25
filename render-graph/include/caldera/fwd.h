@@ -6,7 +6,7 @@ namespace caldera
 {
     class RenderGraph;
 
-    enum class FamilyType : uint16_t;
+    enum class FamilyType;
     struct FamilyNumbers;
 
     enum class ImageUsage;
@@ -17,6 +17,7 @@ namespace caldera
 
     struct ImageDescription;
     struct BufferDescription;
+    struct ImageViewDescription;
 
     struct ImageTag;
     struct BufferTag;
@@ -24,14 +25,8 @@ namespace caldera
     template <class TagTy>
     struct BasicResourceID;
 
-    template <class TagTy>
-    struct BasicResourceVersion;
-
     using ImageID = BasicResourceID<ImageTag>;
     using BufferID = BasicResourceID<BufferTag>;
-
-    using ImageVersion = BasicResourceVersion<ImageTag>;
-    using BufferVersion = BasicResourceVersion<BufferTag>;
 
     class ResourceMap;
     class ResourceStateManager;
@@ -43,7 +38,7 @@ namespace caldera
     class GraphAllocator;
     class GraphExecutor;
 
-    class GraphIR;
+    struct GraphIR;
 
     class CommandBufferDistributor;
     class SemaphoreMap;
