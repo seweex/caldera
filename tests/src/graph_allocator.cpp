@@ -1,14 +1,9 @@
-#if !VULKAN_HPP_DISPATCH_LOADER_DYNAMIC
-#error "Dynamic dispatching is required"
-#endif
 
 #include <vulkan/vulkan.hpp>
 #include <gtest/gtest.h>
 
 #include <caldera/structs.hpp>
 #include <detail/graph_allocator.hpp>
-
-VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 class GraphAllocatorTest : public ::testing::Test
 {
