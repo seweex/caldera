@@ -25,8 +25,6 @@ namespace caldera
             std::function<void(PassDeclarator&, UserData&)> const& setup,
             std::function<void(vk::CommandBuffer, ResourceMap const&, UserData&)> callback)
         {
-            m_ir.passes.reserve(m_ir.passes.size() + 1);
-
             auto const passIdx = static_cast<uint32_t>(m_ir.passes.size());
             PassDeclarator passDeclarator{ passName, passType, passIdx, m_ir.imageVersions, m_ir.bufferVersions };
 
@@ -47,15 +45,13 @@ namespace caldera
             std::function<void(PassDeclarator&)> const& setup,
             std::function<void(vk::CommandBuffer, ResourceMap const&)> callback)
         {
-            m_ir.passes.reserve(m_ir.passes.size() + 1);
-
             auto const passIdx = static_cast<uint32_t>(m_ir.passes.size());
             PassDeclarator passDeclarator{ passName, passType, passIdx, m_ir.imageVersions, m_ir.bufferVersions };
 
             std::invoke(setup, passDeclarator);
 
-            m_ir.passes.emplace_back(std::move(passDeclarator)
-                .extract(std::move(callback)));
+            m_ir.passes.emplace_back(
+                std::move(passDeclarator).extract(std::move(callback)));
 
             return *this;
         }

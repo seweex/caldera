@@ -92,7 +92,7 @@ namespace caldera
     struct ImageLastState
     {
         vk::PipelineStageFlags2 stages;
-        vk::AccessFlags2 access;
+        vk::AccessFlagBits2 access;
         vk::ImageLayout layout;
         uint32_t familyIdx;
     };
@@ -100,7 +100,7 @@ namespace caldera
     struct BufferLastState
     {
         vk::PipelineStageFlags2 stages;
-        vk::AccessFlags2 access;
+        vk::AccessFlagBits2 access;
         uint32_t familyIdx;
     };
 }

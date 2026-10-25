@@ -32,14 +32,8 @@ find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 
-add_subdirectory(external/vk-bootstrap)
 add_subdirectory(render-graph)
-target_compile_definitions(caldera-render-graph PUBLIC VULKAN_HPP_NO_EXCEPTIONS GLFW_INCLUDE_VULKAN)
-
-add_subdirectory(framework)
-add_subdirectory(examples/01_basic_graph)
-add_subdirectory(examples/02_gravity_simulation)
-add_subdirectory(examples/03_simulation)
+target_compile_definitions(caldera-render-graph PUBLIC VULKAN_HPP_NO_EXCEPTIONS)
 
 enable_testing()
 add_subdirectory(tests)
