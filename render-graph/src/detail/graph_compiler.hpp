@@ -13,19 +13,19 @@
 
 namespace caldera::detail
 {
-    [[nodiscard]] auto group_key(
+    [[nodiscard]] inline auto group_key(
          ImageTouch const &touch,
          FamilyNumbers const &families) {
         return std::pair{ static_cast<uint32_t>(touch.layout), families.get(touch.family)};
     }
 
-    [[nodiscard]] auto group_key(
+    [[nodiscard]] inline auto group_key(
          BufferTouch const &touch,
          FamilyNumbers const &families) {
         return families.get(touch.family);
     }
 
-    void sort_readings(
+    inline void sort_readings(
         auto const &writing,
         auto &readings,
          FamilyNumbers const &families)
@@ -67,7 +67,7 @@ namespace caldera::detail
         std::ranges::stable_sort(readings, {}, rank);
     }
 
-    void sort_versions(
+    inline void sort_versions(
         auto &versionTable,
          FamilyNumbers const &families)
     {
@@ -77,7 +77,7 @@ namespace caldera::detail
     }
 
     template <class TableTy>
-    void append_adjacency_list(
+    inline void append_adjacency_list(
          GraphAdjacencyList &adjacency,
          FamilyNumbers const &families,
         TableTy const &versionTable)
@@ -153,7 +153,7 @@ namespace caldera::detail
         }
     }
 
-    void deduplicate_adjacency_list(
+    inline void deduplicate_adjacency_list(
          GraphAdjacencyList &adjacency)
     {
         for (auto &children: adjacency.passChildren) {
@@ -191,7 +191,7 @@ namespace caldera::detail
     }
 
     [[nodiscard]] std::vector<uint32_t>
-    topological_sort(
+    inline topological_sort(
          GraphAdjacencyList const &adjacency,
          FamilyNumbers const &families,
         std::span< PassDeclaration const> const passes) {
@@ -278,7 +278,7 @@ namespace caldera::detail
     /* * * * */
 
     template <class TableTy>
-    [[nodiscard]] TableTy make_tracking_table(auto const& versionTable)
+    [[nodiscard]] inline TableTy make_tracking_table(auto const& versionTable)
     {
         TableTy table;
         table.reserve(versionTable.size());
@@ -336,7 +336,7 @@ namespace caldera::detail
     /* * * * */
 
     [[nodiscard]]  ImageBarrier
-    make_initial_barrier(
+    inline make_initial_barrier(
          ImageID const id,
          FamilyNumbers const& families,
          ImageTrackedInfo const& trackedInfo) noexcept
@@ -360,7 +360,7 @@ namespace caldera::detail
     }
 
     [[nodiscard]]  BufferBarrier
-    make_initial_barrier(
+    inline make_initial_barrier(
          BufferID const id,
          FamilyNumbers const& families,
          BufferTrackedInfo const& trackedInfo) noexcept
@@ -379,7 +379,7 @@ namespace caldera::detail
     }
 
     template<class TagTy>
-    void append_with_barriers(
+    inline void append_with_barriers(
          CompiledGraph &graph,
          FamilyNumbers const& families,
         auto const barrierGroupPtr,
@@ -523,7 +523,7 @@ namespace caldera::detail
     /* * * * */
 
     template <class TagTy>
-    void append_with_allowed_resources(
+    inline void append_with_allowed_resources(
          CompiledGraph &graph,
         auto const resourceGroupPtr,
         auto const resourceOffsetPtr,
@@ -572,7 +572,7 @@ namespace caldera::detail
 
     /* * * * */
 
-    void append_with_pass_dependencies(
+    inline void append_with_pass_dependencies(
          CompiledGraph &graph,
          GraphAdjacencyList const& adjacency,
         auto const& passOrder)
@@ -609,7 +609,7 @@ namespace caldera::detail
     /* * * * */
 
     [[nodiscard]] std::vector< CompiledPass>
-    make_passes(
+    inline make_passes(
          GraphIR const& ir,
          FamilyNumbers const& families)
     {
@@ -628,7 +628,7 @@ namespace caldera::detail
     }
 
     [[nodiscard]]  CompiledGraph
-    generate_compiled_graph(
+    inline generate_compiled_graph(
          GraphIR const& ir,
          FamilyNumbers const& families,
          GraphAdjacencyList const& adjacency,

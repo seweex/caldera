@@ -13,6 +13,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(caldera-tests
     ${CMAKE_CURRENT_LIST_DIR}/src/graph_allocator.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/graph_compiler.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/graph_compiler_advanced.cpp
 )
 
 target_compile_definitions(caldera-render-graph PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
