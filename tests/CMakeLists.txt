@@ -11,7 +11,9 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 add_executable(caldera-tests
+    ${CMAKE_CURRENT_LIST_DIR}/src/test_main.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/graph_allocator.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/graph_allocator_advanced.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/graph_compiler.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/graph_compiler_advanced.cpp
 )
