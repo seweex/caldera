@@ -1,4 +1,5 @@
 [requires]
+glfw/3.4
 vulkan-memory-allocator/3.3.0
 
 [generators]

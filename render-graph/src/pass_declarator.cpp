@@ -1,89 +1,157 @@
-#include <caldera/pass_declarator.h>
-#include "detail/pass_declarator.h"
+#include <cstdint>
+#include <cassert>
+#include <unordered_map>
 
-#include "caldera/graph_declarator.h"
-#include "detail/graph_declarator.h"
+#include <caldera/structs.hpp>
+#include <caldera/resource_id.hpp>
+#include <caldera/detail/touch_translator.hpp>
+
+#include <caldera/pass_declarator.hpp>
+
+namespace
+{
+    template <class TagTy>
+    void ensure_zero_version(auto& versionList)
+    {
+        if (versionList.empty()) {
+            if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+                versionList.emplace_back(caldera::detail::undefined_image_touch);
+            else
+                versionList.emplace_back(caldera::detail::undefined_buffer_touch);
+        }
+    }
+
+    template <class TagTy>
+    void push_reading(
+        auto& versionList,
+        uint32_t const passIdx,
+        caldera::FamilyType const family,
+        caldera::BasicResourceVersion<TagTy> const resource,
+        auto const usage)
+    {
+        ensure_zero_version<TagTy>(versionList);
+
+        assert((!resource.id.isTransient || resource.versionIdx > 0) &&
+            "can't read undefined state of transient resource");
+
+        assert(versionList.size() >= resource.versionIdx &&
+            "can't read non-existing version");
+
+        caldera::detail::TouchTranslator translator;
+
+        auto& version = versionList[resource.versionIdx];
+        auto const touch = translator.translate_touch(
+            family, usage, caldera::detail::AccessKind::read, passIdx);
+
+        version.readingList.push_back(touch);
+    }
+
+    template <class TagTy>
+    [[nodiscard]] caldera::BasicResourceVersion<TagTy> push_writing(
+        auto& versionList,
+        uint32_t const passIdx,
+        caldera::FamilyType const family,
+        caldera::BasicResourceVersion<TagTy> const resource,
+        auto const usage)
+    {
+        ensure_zero_version<TagTy>(versionList);
+
+        assert(versionList.size() == resource.versionIdx + 1 &&
+            "can't overwrite non-previous version");
+
+        caldera::detail::TouchTranslator translator;
+
+        auto& version = versionList.emplace_back();
+        version.writing = translator.translate_touch(
+            family, usage, caldera::detail::AccessKind::write, passIdx);
+
+        auto result = resource;
+        ++result.versionIdx;
+
+        return result;
+    }
+
+    template <class TagTy>
+    [[nodiscard]] caldera::BasicResourceVersion<TagTy> push_read_write(
+        auto& versionList,
+        uint32_t const passIdx,
+        caldera::FamilyType const family,
+        caldera::BasicResourceVersion<TagTy> const resource,
+        auto const usage)
+    {
+        ensure_zero_version<TagTy>(versionList);
+
+        assert((!resource.id.isTransient || resource.versionIdx > 0) &&
+            "can't read undefined state of transient resource");
+
+        assert(versionList.size() == resource.versionIdx + 1 &&
+            "can't overwrite non-previous version");
+
+        caldera::detail::TouchTranslator translator;
+        versionList.reserve(versionList.size() + 1);
+
+        auto& oldVersion = versionList.back();
+        auto& newVersion = versionList.emplace_back();
+
+        auto const touch = translator.translate_touch(family, usage, caldera::detail::AccessKind::write, passIdx);
+
+        oldVersion.readingList.emplace_back(touch);
+        newVersion.writing = touch;
+
+        auto result = resource;
+        ++result.versionIdx;
+
+        return result;
+    }
+}
 
 namespace caldera
 {
-    /* Pass Declarator */
-
     PassDeclarator::PassDeclarator(
-        std::string_view const passName,
+        std::string_view const name,
         FamilyType const family,
-        GraphDeclarator &graphDeclarator)
+        uint32_t const index,
+        detail::ImageVersionTable &imageTable,
+        detail::BufferVersionTable &bufferTable)
     :
-        m_impl(std::make_unique<Impl>(
-            graphDeclarator, GraphDeclarator::PassAttorney::emplace_pass(graphDeclarator, passName, family)))
+        m_name(name),
+        m_type(family),
+        m_index(index),
+        m_imageTable(&imageTable),
+        m_bufferTable(&bufferTable)
     {}
 
-    PassDeclarator::~PassDeclarator() noexcept = default;
-
-    PassDeclarator::PassDeclarator(PassDeclarator &&) noexcept = default;
-    PassDeclarator & PassDeclarator::operator=(PassDeclarator &&) noexcept = default;
-
-    ImageVersion PassDeclarator::read(ImageVersion const resource, ImageUsage const usage) {
-        auto& impl = *m_impl;
-        return GraphDeclarator::PassAttorney::push_reading(impl.declarator, impl.passIdx, resource, usage);
+    detail::PassDeclaration PassDeclarator::extract(
+        std::function<void(vk::CommandBuffer, ResourceMap const&)> && callback) && noexcept
+    {
+        return detail::PassDeclaration {
+            .name = std::move(m_name),
+            .family = m_type,
+            .callback = std::move(callback),
+        };
     }
 
-    ImageVersion PassDeclarator::read(ImageID const resource, ImageUsage const usage) {
-        return this->read(ImageVersion{ resource, 0 }, usage);
+    void PassDeclarator::read(ImageVersion const resource, ImageUsage const usage) {
+        ::push_reading((*m_imageTable)[resource.id], m_index, m_type, resource, usage);
     }
 
-    BufferVersion PassDeclarator::read(BufferVersion const resource, BufferUsage const usage) {
-        auto& impl = *m_impl;
-        return GraphDeclarator::PassAttorney::push_reading(impl.declarator, impl.passIdx, resource, usage);
-    }
-
-    BufferVersion PassDeclarator::read(BufferID const resource, BufferUsage const usage) {
-        return this->read(BufferVersion{ resource, 0 }, usage);
+    void PassDeclarator::read(BufferVersion const resource, BufferUsage const usage) {
+        ::push_reading((*m_bufferTable)[resource.id], m_index, m_type, resource, usage);
     }
 
     ImageVersion PassDeclarator::write(ImageVersion const resource, ImageUsage const usage) {
-        auto& impl = *m_impl;
-        return GraphDeclarator::PassAttorney::push_writing(impl.declarator, impl.passIdx, resource, usage);
-    }
-
-    ImageVersion PassDeclarator::write(ImageID const resource, ImageUsage const usage) {
-        return this->write(ImageVersion{ resource, 0 }, usage);
+        return ::push_writing((*m_imageTable)[resource.id], m_index, m_type, resource, usage);
     }
 
     BufferVersion PassDeclarator::write(BufferVersion const resource, BufferUsage const usage) {
-        auto& impl = *m_impl;
-        return GraphDeclarator::PassAttorney::push_writing(impl.declarator, impl.passIdx, resource, usage);
-    }
-
-    BufferVersion PassDeclarator::write(BufferID const resource, BufferUsage const usage) {
-        return this->write(BufferVersion{ resource, 0 }, usage);
+        return ::push_writing((*m_bufferTable)[resource.id], m_index, m_type, resource, usage);
     }
 
     ImageVersion PassDeclarator::read_write(ImageVersion const resource, ImageUsage const usage) {
-        auto& impl = *m_impl;
-        auto read = GraphDeclarator::PassAttorney::push_reading(impl.declarator, impl.passIdx, resource, usage);
-        return GraphDeclarator::PassAttorney::push_writing(impl.declarator, impl.passIdx, read, usage);
-    }
-
-    ImageVersion PassDeclarator::read_write(ImageID const resource, ImageUsage const usage) {
-        return this->read_write(ImageVersion{ resource, 0 }, usage);
+        return ::push_read_write((*m_imageTable)[resource.id], m_index, m_type, resource, usage);
     }
 
     BufferVersion PassDeclarator::read_write(BufferVersion const resource, BufferUsage const usage) {
-        auto& impl = *m_impl;
-        auto read = GraphDeclarator::PassAttorney::push_writing(impl.declarator, impl.passIdx, resource, usage);
-        return GraphDeclarator::PassAttorney::push_writing(impl.declarator, impl.passIdx, read, usage);
-    }
-
-    BufferVersion PassDeclarator::read_write(BufferID const resource, BufferUsage const usage) {
-        return this->read_write(BufferVersion{ resource, 0 }, usage);
-    }
-
-    void PassDeclarator::set_callback(
-        std::function<void(ResourceMap const &, vk::CommandBuffer)> callback)
-    {
-        assert(callback != nullptr);
-
-        auto& impl = *m_impl;
-        GraphDeclarator::PassAttorney::set_pass_callback(impl.declarator, impl.passIdx, std::move(callback));
+        return ::push_read_write((*m_bufferTable)[resource.id], m_index, m_type, resource, usage);
     }
 }

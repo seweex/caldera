@@ -1,87 +1,48 @@
-#include <caldera/resource_state_manager.h>
-#include <caldera/resource_id.h>
+#include <cassert>
 
-#include "detail/resource_state_manager.h"
+#include <caldera/resource_id.hpp>
+#include <caldera/structs.hpp>
+#include <caldera/resource_state_manager.hpp>
 
 namespace
 {
-    void reset_state(auto& list, auto const id) {
-        assert(!id.is_transient);
-        list[id.index] = caldera::detail::ResourceTouch{};
+    void dump(
+        auto& list,
+        auto const id,
+        auto const &state)
+    {
+        assert(!id.isTransient && "can not dump for a transient resources");
+
+        if (list.size() <= id.index)
+            list.reserve(id.index + 1);
+
+        list[id.index] = state;
+    }
+
+    [[nodiscard]] auto get(
+        auto const &list,
+        auto const id)
+    {
+        assert(!id.isTransient && "can not get for a transient resources");
+        return list[id.index];
     }
 }
 
 namespace caldera
 {
-    /* Impl */
-
-    void ResourceStateManager::Impl::cleanup_transient() noexcept {
-        std::ranges::fill(transientImageTouches, detail::ResourceTouch{});
-        std::ranges::fill(transientBufferTouches, detail::ResourceTouch{});
+    void ResourceStateManager::dump(ImageID const id, ImageLastState const &state) {
+        ::dump(m_imageTouches, id, state);
     }
 
-    /* Executor Attorney */
-
-    void ResourceStateManager::ExecutorAttorney::cleanup_transient(
-        ResourceStateManager &manager) noexcept
-    {
-        manager.m_impl->cleanup_transient();
+    void ResourceStateManager::dump(BufferID const id, BufferLastState const &state) {
+        ::dump(m_bufferTouches, id, state);
     }
 
-    detail::ResourceTouch& ResourceStateManager::ExecutorAttorney::get_state(
-        ResourceStateManager& manager,
-        ImageID const id) noexcept
-    {
-        auto& touchList = (id.is_transient ? manager.m_impl->transientImageTouches : manager.m_impl->externImageTouches);
-
-        if (touchList.size() <= id.index)
-            touchList.resize(id.index + 1);
-
-        return touchList[id.index];
+    ImageLastState ResourceStateManager::get_last_state(ImageID const id) const {
+        return ::get(m_imageTouches, id);
     }
 
-    detail::ResourceTouch& ResourceStateManager::ExecutorAttorney::get_state(
-        ResourceStateManager& manager,
-        BufferID const id) noexcept
-    {
-        auto& touchList = (id.is_transient ? manager.m_impl->transientImageTouches : manager.m_impl->externImageTouches);
-
-        if (touchList.size() <= id.index)
-            touchList.resize(id.index + 1);
-
-        return touchList[id.index];
-    }
-
-    detail::ResourceTouch const& ResourceStateManager::ExecutorAttorney::get_state(
-        ResourceStateManager const &manager,
-        ImageID const id) noexcept
-    {
-        return get_state(const_cast<ResourceStateManager&>(manager), id);
-    }
-
-    detail::ResourceTouch const & ResourceStateManager::ExecutorAttorney::get_state(
-        ResourceStateManager const &manager,
-        BufferID const id) noexcept
-    {
-        return get_state(const_cast<ResourceStateManager&>(manager), id);
-    }
-
-    /* ResourceStateManager */
-
-    ResourceStateManager::ResourceStateManager() :
-        m_impl(std::make_unique<Impl>())
-    {}
-
-    ResourceStateManager::~ResourceStateManager() noexcept = default;
-
-    ResourceStateManager::ResourceStateManager(ResourceStateManager &&) noexcept = default;
-    ResourceStateManager & ResourceStateManager::operator=(ResourceStateManager &&) noexcept = default;
-
-    void ResourceStateManager::reset_for(ImageID const id) noexcept {
-        ::reset_state(m_impl->externImageTouches, id);
-    }
-
-    void ResourceStateManager::reset_for(BufferID const id) noexcept {
-        ::reset_state(m_impl->externBufferTouches, id);
+    BufferLastState ResourceStateManager::get_last_state(BufferID const id) const {
+        return ::get(m_bufferTouches, id);
     }
 }

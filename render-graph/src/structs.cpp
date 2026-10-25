@@ -1,5 +1,5 @@
-
-#include "detail/structs.h"
+#include <cassert>
+#include <caldera/structs.hpp>
 
 namespace caldera
 {
@@ -9,29 +9,8 @@ namespace caldera
         {
         case FamilyType::graphics: return graphics;
         case FamilyType::transfer: return transfer;
-        case FamilyType::compute:  return compute;
-        default:                   return vk::QueueFamilyIgnored;
+        case FamilyType::compute: return compute;
+        default: assert(false);
         }
-    }
-}
-
-namespace caldera::detail
-{
-    bool ImageVersionDesc::Toucher::Comparator::operator()(
-        Toucher const &l, Toucher const &r) const noexcept
-    {
-        if (l.usage == r.usage)
-            return l.family < r.family;
-
-        return l.usage < r.usage;
-    }
-
-    bool BufferVersionDesc::Toucher::Comparator::operator()(
-        Toucher const &l, Toucher const &r) const noexcept
-    {
-        if (l.usage == r.usage)
-            return l.family < r.family;
-
-        return l.usage < r.usage;
     }
 }

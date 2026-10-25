@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21...4.3.0)
+cmake_minimum_required(VERSION 3.5...4.3.0)
 
 string(CONCAT CALDERA_PROJECT_DESCRIPTION
     "Caldera is an implementation of Vulkan Render Graph."
@@ -18,10 +18,19 @@ project(caldera
     #add_link_options(-fsanitize=address,undefined)
 # endif()
 
+include(cmake/ShaderCompile.txt)
+
+if(MSVC)
+    add_compile_options(/EHs-c- /GR-)
+    add_compile_definitions(_HAS_EXCEPTIONS=0)
+else()
+    add_compile_options(-fno-exceptions -fno-rtti)
+endif()
+
+find_package(Git REQUIRED)
+find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 
-add_subdirectory(external/vk-bootstrap)
 add_subdirectory(render-graph)
-add_subdirectory(framework)
-add_subdirectory(examples/01_basic_graph)
+target_compile_definitions(caldera-render-graph PUBLIC VULKAN_HPP_NO_EXCEPTIONS)
