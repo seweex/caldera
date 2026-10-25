@@ -1,7 +1,6 @@
 #pragma once
 
-#include <caldera/fwd.h>
-#include <caldera/structs.hpp>
+#include <caldera/fwd.hpp>
 
 namespace caldera::detail
 {

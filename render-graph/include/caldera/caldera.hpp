@@ -1,5 +1,7 @@
 #pragma once
 
+#include "fwd.hpp"
+
 #include "resource_id.hpp"
 #include "structs.hpp"
 

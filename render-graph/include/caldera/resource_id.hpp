@@ -1,8 +1,9 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <compare>
 #include <functional>
-#include "fwd.h"
 
 namespace caldera
 {

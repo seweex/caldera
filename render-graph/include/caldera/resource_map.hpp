@@ -4,7 +4,7 @@
 #include <span>
 #include <vulkan/vulkan.hpp>
 
-#include <caldera/structs.hpp>
+#include <caldera/fwd.hpp>
 
 namespace caldera
 {

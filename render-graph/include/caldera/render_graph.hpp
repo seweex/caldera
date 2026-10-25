@@ -1,7 +1,11 @@
 #pragma once
 
-#include <caldera/fwd.h>
+#include <expected>
 
+#include <vulkan/vulkan.hpp>
+#include <vk_mem_alloc.h>
+
+#include <caldera/fwd.hpp>
 #include <caldera/structs.hpp>
 #include <caldera/detail/graph_allocator.hpp>
 

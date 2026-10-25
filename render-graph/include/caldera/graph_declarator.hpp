@@ -1,8 +1,9 @@
 #pragma once
 
-#include <string_view>
-#include <vector>
+#include <cstdint>
+#include <utility>
 #include <concepts>
+#include <string_view>
 #include <functional>
 #include <vulkan/vulkan.hpp>
 

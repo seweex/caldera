@@ -1,6 +1,9 @@
 #pragma once
 
-#include <caldera/structs.hpp>
+#include <cstdint>
+#include <vulkan/vulkan.hpp>
+
+#include <caldera/fwd.hpp>
 
 namespace caldera::detail
 {

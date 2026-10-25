@@ -1,9 +1,7 @@
 #pragma once
 
-#include <memory>
-#include <memory>
 #include <vector>
-#include <caldera/structs.hpp>
+#include <caldera/fwd.hpp>
 
 namespace caldera
 {

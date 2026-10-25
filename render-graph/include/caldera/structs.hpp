@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <string>
 #include <span>
 #include <unordered_map>
 #include <functional>
@@ -9,7 +11,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vk_mem_alloc.h>
 
-#include <caldera/fwd.h>
+#include <caldera/fwd.hpp>
 #include <caldera/resource_id.hpp>
 
 namespace caldera

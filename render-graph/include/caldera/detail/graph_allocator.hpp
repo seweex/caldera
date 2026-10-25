@@ -1,10 +1,10 @@
 #pragma once
 
 #include <expected>
+
 #include <vulkan/vulkan.hpp>
 #include <vk_mem_alloc.h>
 
-#include <caldera/fwd.h>
 #include <caldera/structs.hpp>
 
 namespace caldera::detail
