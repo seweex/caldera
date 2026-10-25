@@ -1,5 +1,5 @@
-#include <caldera/graph_declarator.hpp>
 #include <caldera/resource_id.hpp>
+#include <caldera/graph_declarator.hpp>
 
 namespace
 {
@@ -13,8 +13,7 @@ namespace
 
         return caldera::BasicResourceID<TagTy>{
             .isTransient = 1,
-            .index = resourceIdx,
-            .version = 0
+            .index = resourceIdx
         };
     }
 }

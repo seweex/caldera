@@ -1,8 +1,12 @@
-#include <caldera/pass_declarator.hpp>
+#include <cstdint>
+#include <cassert>
+#include <unordered_map>
 
 #include <caldera/structs.hpp>
 #include <caldera/resource_id.hpp>
 #include <caldera/detail/touch_translator.hpp>
+
+#include <caldera/pass_declarator.hpp>
 
 namespace
 {
@@ -22,20 +26,20 @@ namespace
         auto& versionList,
         uint32_t const passIdx,
         caldera::FamilyType const family,
-        caldera::BasicResourceID<TagTy> const resource,
+        caldera::BasicResourceVersion<TagTy> const resource,
         auto const usage)
     {
         ensure_zero_version<TagTy>(versionList);
 
-        assert((!resource.isTransient || resource.version > 0) &&
+        assert((!resource.id.isTransient || resource.versionIdx > 0) &&
             "can't read undefined state of transient resource");
 
-        assert(versionList.size() >= resource.version &&
+        assert(versionList.size() >= resource.versionIdx &&
             "can't read non-existing version");
 
         caldera::detail::TouchTranslator translator;
 
-        auto& version = versionList[resource.version];
+        auto& version = versionList[resource.versionIdx];
         auto const touch = translator.translate_touch(
             family, usage, caldera::detail::AccessKind::read, passIdx);
 
@@ -43,16 +47,16 @@ namespace
     }
 
     template <class TagTy>
-    [[nodiscard]] caldera::BasicResourceID<TagTy> push_writing(
+    [[nodiscard]] caldera::BasicResourceVersion<TagTy> push_writing(
         auto& versionList,
         uint32_t const passIdx,
         caldera::FamilyType const family,
-        caldera::BasicResourceID<TagTy> const resource,
+        caldera::BasicResourceVersion<TagTy> const resource,
         auto const usage)
     {
         ensure_zero_version<TagTy>(versionList);
 
-        assert(versionList.size() == resource.version + 1 &&
+        assert(versionList.size() == resource.versionIdx + 1 &&
             "can't overwrite non-previous version");
 
         caldera::detail::TouchTranslator translator;
@@ -62,25 +66,25 @@ namespace
             family, usage, caldera::detail::AccessKind::write, passIdx);
 
         auto result = resource;
-        ++result.version;
+        ++result.versionIdx;
 
         return result;
     }
 
     template <class TagTy>
-    [[nodiscard]] caldera::BasicResourceID<TagTy> push_read_write(
+    [[nodiscard]] caldera::BasicResourceVersion<TagTy> push_read_write(
         auto& versionList,
         uint32_t const passIdx,
         caldera::FamilyType const family,
-        caldera::BasicResourceID<TagTy> const resource,
+        caldera::BasicResourceVersion<TagTy> const resource,
         auto const usage)
     {
         ensure_zero_version<TagTy>(versionList);
 
-        assert((!resource.isTransient || resource.version > 0) &&
+        assert((!resource.id.isTransient || resource.versionIdx > 0) &&
             "can't read undefined state of transient resource");
 
-        assert(versionList.size() == resource.version + 1 &&
+        assert(versionList.size() == resource.versionIdx + 1 &&
             "can't overwrite non-previous version");
 
         caldera::detail::TouchTranslator translator;
@@ -95,7 +99,7 @@ namespace
         newVersion.writing = touch;
 
         auto result = resource;
-        ++result.version;
+        ++result.versionIdx;
 
         return result;
     }
@@ -127,27 +131,27 @@ namespace caldera
         };
     }
 
-    void PassDeclarator::read(ImageID const resource, ImageUsage const usage) {
-        ::push_reading((*m_imageTable)[resource], m_index, m_type, resource, usage);
+    void PassDeclarator::read(ImageVersion const resource, ImageUsage const usage) {
+        ::push_reading((*m_imageTable)[resource.id], m_index, m_type, resource, usage);
     }
 
-    void PassDeclarator::read(BufferID const resource, BufferUsage const usage) {
-        ::push_reading((*m_bufferTable)[resource], m_index, m_type, resource, usage);
+    void PassDeclarator::read(BufferVersion const resource, BufferUsage const usage) {
+        ::push_reading((*m_bufferTable)[resource.id], m_index, m_type, resource, usage);
     }
 
-    ImageID PassDeclarator::write(ImageID const resource, ImageUsage const usage) {
-        return ::push_writing((*m_imageTable)[resource], m_index, m_type, resource, usage);
+    ImageVersion PassDeclarator::write(ImageVersion const resource, ImageUsage const usage) {
+        return ::push_writing((*m_imageTable)[resource.id], m_index, m_type, resource, usage);
     }
 
-    BufferID PassDeclarator::write(BufferID const resource, BufferUsage const usage) {
-        return ::push_writing((*m_bufferTable)[resource], m_index, m_type, resource, usage);
+    BufferVersion PassDeclarator::write(BufferVersion const resource, BufferUsage const usage) {
+        return ::push_writing((*m_bufferTable)[resource.id], m_index, m_type, resource, usage);
     }
 
-    ImageID PassDeclarator::read_write(ImageID const resource, ImageUsage const usage) {
-        return ::push_read_write((*m_imageTable)[resource], m_index, m_type, resource, usage);
+    ImageVersion PassDeclarator::read_write(ImageVersion const resource, ImageUsage const usage) {
+        return ::push_read_write((*m_imageTable)[resource.id], m_index, m_type, resource, usage);
     }
 
-    BufferID PassDeclarator::read_write(BufferID const resource, BufferUsage const usage) {
-        return ::push_read_write((*m_bufferTable)[resource], m_index, m_type, resource, usage);
+    BufferVersion PassDeclarator::read_write(BufferVersion const resource, BufferUsage const usage) {
+        return ::push_read_write((*m_bufferTable)[resource.id], m_index, m_type, resource, usage);
     }
 }

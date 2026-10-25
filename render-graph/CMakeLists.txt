@@ -26,4 +26,11 @@ target_link_libraries(caldera-render-graph PUBLIC
 set_target_properties(caldera-render-graph PROPERTIES
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF)
+    CXX_EXTENSIONS OFF
+    COMPILE_WARNING_AS_ERROR ON)
+
+if(MSVC)
+    target_compile_options(caldera-render-graph PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(caldera-render-graph PRIVATE -Wall -Wextra -Wpedantic)
+endif()

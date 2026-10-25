@@ -1,3 +1,4 @@
+#include <caldera/structs.hpp>
 #include <caldera/command_buffer_distributor.hpp>
 
 namespace caldera

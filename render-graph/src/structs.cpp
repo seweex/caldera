@@ -1,3 +1,4 @@
+#include <cassert>
 #include <caldera/structs.hpp>
 
 namespace caldera

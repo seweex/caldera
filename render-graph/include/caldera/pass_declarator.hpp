@@ -25,14 +25,14 @@ namespace caldera
         friend class GraphDeclarator;
 
     public:
-        void read(ImageID resource, ImageUsage usage);
-        void read(BufferID resource, BufferUsage usage);
+        void read(ImageVersion resource, ImageUsage usage);
+        void read(BufferVersion resource, BufferUsage usage);
 
-        ImageID write(ImageID resource, ImageUsage usage);
-        BufferID write(BufferID resource, BufferUsage usage);
+        ImageVersion write(ImageVersion resource, ImageUsage usage);
+        BufferVersion write(BufferVersion resource, BufferUsage usage);
 
-        ImageID read_write(ImageID resource, ImageUsage usage);
-        BufferID read_write(BufferID resource, BufferUsage usage);
+        ImageVersion read_write(ImageVersion resource, ImageUsage usage);
+        BufferVersion read_write(BufferVersion resource, BufferUsage usage);
 
     private:
         std::string m_name;

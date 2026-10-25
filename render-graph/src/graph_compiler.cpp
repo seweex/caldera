@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cstdint>
 #include <queue>
 #include <vector>
@@ -5,9 +6,8 @@
 
 #include <caldera/structs.hpp>
 #include <caldera/detail/access_resolver.hpp>
+#include <caldera/detail/touch_translator.hpp>
 #include <caldera/detail/graph_compiler.hpp>
-
-#include "caldera/detail/touch_translator.hpp"
 
 namespace
 {
@@ -26,15 +26,8 @@ namespace
     void sort_readings(
         auto const &writing,
         auto &readings,
-        caldera::FamilyNumbers const &families) {
-        auto const comparator = [&](auto const &left, auto const &right) {
-            if (requires { left.layout; right.layout; })
-                if (left.layout != right.layout)
-                    return left.layout < right.layout;
-
-            return families.get(left.family) < families.get(right.family);
-        };
-
+        caldera::FamilyNumbers const &families)
+    {
         std::vector<decltype(group_key(writing, families))> remaining;
 
         for (auto const &reading: readings)
@@ -378,7 +371,8 @@ namespace
             .srcFamilyIdx = vk::QueueFamilyIgnored,
             .dstFamilyIdx = families.get(trackedInfo.firstTouch.family),
             .id = id,
-            0, vk::WholeSize
+            .offset = 0,
+            .size = vk::WholeSize
         };
     }
 

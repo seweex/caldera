@@ -1,5 +1,10 @@
-#include <caldera/resource_map.hpp>
+#include <cstdint>
+#include <cassert>
+#include <ranges>
+
 #include <caldera/resource_id.hpp>
+#include <caldera/structs.hpp>
+#include <caldera/resource_map.hpp>
 
 namespace
 {
@@ -39,8 +44,7 @@ namespace
     {
         return caldera::BasicResourceID<TagTy> {
             .isTransient = 0,
-            .index = static_cast<uint32_t>(list.size()),
-            .version = 0
+            .index = static_cast<uint32_t>(list.size())
         };
     }
 }

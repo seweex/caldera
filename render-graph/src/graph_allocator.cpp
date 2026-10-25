@@ -1,4 +1,3 @@
-#include <ranges>
 #include <expected>
 #include <vector>
 #include <concepts>
@@ -93,8 +92,7 @@ namespace
         {
             caldera::BasicResourceID<TagTy> const resourceID {
                 .isTransient = 1,
-                .index = resourceIdx,
-                .version = 0
+                .index = resourceIdx
             };
 
             auto const handle = allocatedResources[resourceIdx];
@@ -204,8 +202,7 @@ namespace
         {
             caldera::ImageID const id {
                 .isTransient = 1,
-                .index = resourceIdx,
-                .version = 0
+                .index = resourceIdx
             };
 
             auto const& description = descriptionList[resourceIdx];
@@ -259,8 +256,7 @@ namespace
         {
             caldera::BufferID const id {
                 .isTransient = 1,
-                .index = resourceIdx,
-                .version = 0
+                .index = resourceIdx
             };
 
             auto const& description = descriptionList[resourceIdx];

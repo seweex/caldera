@@ -28,6 +28,12 @@ namespace caldera
     template <class TagTy>
     struct BasicResourceVersion
     {
+        constexpr BasicResourceVersion() noexcept = default;
+        constexpr BasicResourceVersion(BasicResourceID<TagTy> const resourceId) noexcept :
+            id(resourceId),
+            versionIdx(0)
+        {}
+
         BasicResourceID<TagTy> id;
         uint32_t versionIdx;
 

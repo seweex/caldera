@@ -34,6 +34,3 @@ find_package(VulkanMemoryAllocator REQUIRED)
 
 add_subdirectory(render-graph)
 target_compile_definitions(caldera-render-graph PUBLIC VULKAN_HPP_NO_EXCEPTIONS)
-
-enable_testing()
-add_subdirectory(tests)

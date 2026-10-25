@@ -1,5 +1,10 @@
-#include <caldera/detail/touch_translator.hpp>
+#include <cassert>
+
+#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_format_traits.hpp>
+
+#include <caldera/structs.hpp>
+#include <caldera/detail/touch_translator.hpp>
 
 namespace
 {
@@ -17,6 +22,8 @@ namespace
         default:
             assert(false);
         }
+
+        return {};
     }
 
     /* * * * */

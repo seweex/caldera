@@ -1,10 +1,13 @@
-#include <caldera/graph_executor.hpp>
+#include <expected>
+#include <vulkan/vulkan.hpp>
+
+#include <caldera/structs.hpp>
 #include <caldera/render_graph.hpp>
 #include <caldera/resource_map.hpp>
-#include <caldera/structs.hpp>
-
 #include <caldera/command_buffer_distributor.hpp>
 #include <caldera/resource_state_manager.hpp>
+
+#include <caldera/graph_executor.hpp>
 
 namespace
 {
@@ -202,7 +205,9 @@ namespace
             pass.bufferPostBarrierOffset,
             pass.bufferPostBarrierSize);
 
-        cmd.end();
+        if (auto const rCode = cmd.end(); rCode < vk::Result::eSuccess)
+            return rCode;
+
         return vk::Result::eSuccess;
     }
 }

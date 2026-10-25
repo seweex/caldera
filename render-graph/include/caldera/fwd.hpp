@@ -17,6 +17,9 @@ namespace caldera
     using ImageID = BasicResourceID<ImageTag>;
     using BufferID = BasicResourceID<BufferTag>;
 
+    using ImageVersion = BasicResourceVersion<ImageTag>;
+    using BufferVersion = BasicResourceVersion<BufferTag>;
+
     using ImageResourceVersion = BasicResourceVersion<ImageTag>;
     using BufferResourceVersion = BasicResourceVersion<BufferTag>;
 

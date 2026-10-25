@@ -1,4 +1,7 @@
 #include <cassert>
+#include <vulkan/vulkan.hpp>
+
+#include <caldera/structs.hpp>
 #include <caldera/detail/access_resolver.hpp>
 
 namespace
@@ -98,7 +101,9 @@ namespace caldera::detail
             .dstAccess = dst.access,
             .srcFamilyIdx = vk::QueueFamilyIgnored,
             .dstFamilyIdx = vk::QueueFamilyIgnored,
-            .id = buffer
+            .id = buffer,
+            .offset = 0,
+            .size = vk::WholeSize
         };
     }
 
@@ -167,6 +172,8 @@ namespace caldera::detail
             .srcFamilyIdx = srcFamily,
             .dstFamilyIdx = dstFamily,
             .id = buffer,
+            .offset = 0,
+            .size = vk::WholeSize
         };
 
         BufferBarrier const acquire {
@@ -177,6 +184,8 @@ namespace caldera::detail
             .srcFamilyIdx = srcFamily,
             .dstFamilyIdx = dstFamily,
             .id = buffer,
+            .offset = 0,
+            .size = vk::WholeSize
         };
 
         return { release, acquire };

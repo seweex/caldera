@@ -1,6 +1,8 @@
-#include <caldera/resource_state_manager.hpp>
+#include <cassert>
+
 #include <caldera/resource_id.hpp>
 #include <caldera/structs.hpp>
+#include <caldera/resource_state_manager.hpp>
 
 namespace
 {
