@@ -19,7 +19,7 @@ add_executable(caldera-tests
 )
 
 target_compile_definitions(caldera-render-graph PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
-target_include_directories(caldera-render-graph PUBLIC ${CMAKE_HOME_DIRECTORY}/render-graph/src)
+target_include_directories(caldera-tests PUBLIC ${CMAKE_HOME_DIRECTORY}/render-graph/src)
 
 target_link_libraries(caldera-tests PRIVATE
         GTest::gtest_main

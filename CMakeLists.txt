@@ -10,6 +10,9 @@ project(caldera
     VERSION 0.0.1
     LANGUAGES CXX)
 
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
 # if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   #  message(STATUS "Enabling ASan and UBSan")
 

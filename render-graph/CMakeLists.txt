@@ -16,9 +16,6 @@ set(CALDERA_RENDER_GRAPH_CPP_FILES
 
 add_library(caldera-render-graph STATIC ${CALDERA_RENDER_GRAPH_CPP_FILES})
 
-target_include_directories(caldera-render-graph PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/)
-target_include_directories(caldera-render-graph PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/)
-
 target_link_libraries(caldera-render-graph PUBLIC
     Vulkan::Vulkan
     GPUOpen::VulkanMemoryAllocator)
@@ -34,3 +31,50 @@ if(MSVC)
 else()
     target_compile_options(caldera-render-graph PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+target_include_directories(caldera-render-graph PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+set(TARGETS_EXPORT_NAME CalderaTargets)
+set(CONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/caldera")
+
+install(TARGETS caldera-render-graph
+    EXPORT ${TARGETS_EXPORT_NAME}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp"
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/CalderaConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/CalderaConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/CalderaConfig.cmake"
+    INSTALL_DESTINATION ${CONFIG_INSTALL_DIR}
+)
+
+install(
+    EXPORT ${TARGETS_EXPORT_NAME}
+    FILE CalderaTargets.cmake
+    NAMESPACE caldera::
+    DESTINATION ${CONFIG_INSTALL_DIR}
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/CalderaConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/CalderaConfigVersion.cmake"
+    DESTINATION ${CONFIG_INSTALL_DIR}
+)
