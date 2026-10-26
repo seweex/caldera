@@ -25,7 +25,7 @@ namespace caldera
          * @param description Description of a transient image
          * @return ID of the newly declared transient image
          *
-         * @note Transient resources doesn't save its state across execution
+         * @note Transient resources don't save its state across execution
          */
         [[nodiscard]] ImageID transient_image(ImageDescription const& description);
 
@@ -35,7 +35,7 @@ namespace caldera
          * @param description Description of a transient buffer
          * @return ID of the newly declared transient buffer
          *
-         * @note Transient resources doesn't save its state across execution
+         * @note Transient resources don't save its state across execution
          */
         [[nodiscard]] BufferID transient_buffer(BufferDescription const& description);
 
@@ -47,7 +47,7 @@ namespace caldera
          * @param passName Name of the pass currently being added
          * @param passType Type of the pass currently being added
          * @param setup Invocable object for setting up the PassDeclarator and UserData that
-         * will be invoked instantly
+         * will be invoked immediately
          * @param callback Invocable object for executing during a graph execution that writes
          * to a vk::CommandBuffer object
          *
@@ -84,7 +84,7 @@ namespace caldera
          * @param passName Name of the pass currently being added
          * @param passType Type of the pass currently being added
          * @param setup Invocable object for setting up the PassDeclarator and UserData that
-         * will be invoked instantly
+         * will be invoked immediately
          * @param callback Invocable object for executing during a graph execution that writes
          * to a vk::CommandBuffer object
          *

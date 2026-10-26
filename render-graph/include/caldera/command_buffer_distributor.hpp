@@ -25,7 +25,7 @@ namespace caldera
         void feed(uint32_t family, std::span<vk::CommandBuffer const> buffers);
 
         /**
-         * @brief Marks all command buffers of an family pool reset
+         * @brief Marks all command buffers of a family pool reset
          * @param family Queue family index of the pool
          *
          * @note This method doesn't call the vkResetCommandBuffer and vkResetCommandPool funcs

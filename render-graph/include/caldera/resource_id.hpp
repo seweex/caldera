@@ -7,10 +7,10 @@
 
 namespace caldera
 {
-    /// @brief Tag for image-related staff
+    /// @brief Tag for image-related thing
     struct ImageTag {};
 
-    /// @brief Tag for buffer-related staff
+    /// @brief Tag for buffer-related things
     struct BufferTag {};
 
     /**

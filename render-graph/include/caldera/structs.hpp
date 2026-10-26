@@ -79,10 +79,10 @@ namespace caldera
         /// @brief Image is a depth or/and stencil attachment
         depth_stencil_attachment,
 
-        /// @brief Image is used as an input attachment
+        /// @brief Image is used as a input attachment
         input_attachment,
 
-        /// @brief Image is used as an resolve attachment
+        /// @brief Image is used as a resolve attachment
         resolve_attachment,
 
         /// @brief Image is used by host
