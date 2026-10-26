@@ -111,7 +111,7 @@ namespace caldera
          * @brief Get described graph representation
          * @return Graph intermediate representation object
          */
-        [[nodiscard]] GraphIR extract() const & noexcept;
+        [[nodiscard]] GraphIR extract() const &;
 
         /**
          * @brief Retrieves described graph representation and clears the GraphDeclarator
