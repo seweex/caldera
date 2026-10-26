@@ -1,77 +1,52 @@
 
-#include <vulkan/vulkan.hpp>
-#include <vk_mem_alloc.h>
 #include <gtest/gtest.h>
+#include <vk_mem_alloc.h>
+#include <vulkan/vulkan.hpp>
 
 #include <caldera/structs.hpp>
 #include <detail/graph_allocator.hpp>
 
 class GraphAllocatorAdvancedTest;
 
-extern "C"
-{
-    VkResult vmaAllocateMemory(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VkMemoryRequirements const* pVkMemoryRequirements,
-        [[maybe_unused]] VmaAllocationCreateInfo const* pCreateInfo,
-        VmaAllocation* pAllocation,
-        [[maybe_unused]] VmaAllocationInfo* pAllocationInfo);
+extern "C" {
+VkResult vmaAllocateMemory([[maybe_unused]] VmaAllocator allocator,
+                           [[maybe_unused]] VkMemoryRequirements const *pVkMemoryRequirements,
+                           [[maybe_unused]] VmaAllocationCreateInfo const *pCreateInfo, VmaAllocation *pAllocation,
+                           [[maybe_unused]] VmaAllocationInfo *pAllocationInfo);
 
-    VkResult vmaAllocateMemoryForImage(
-        [[maybe_unused]] VmaAllocator allocator,
-        VkImage image,
-        [[maybe_unused]] VmaAllocationCreateInfo const* pCreateInfo,
-        VmaAllocation* pAllocation,
-        [[maybe_unused]] VmaAllocationInfo* pAllocationInfo);
+VkResult vmaAllocateMemoryForImage([[maybe_unused]] VmaAllocator allocator, VkImage image,
+                                   [[maybe_unused]] VmaAllocationCreateInfo const *pCreateInfo,
+                                   VmaAllocation *pAllocation, [[maybe_unused]] VmaAllocationInfo *pAllocationInfo);
 
-    VkResult vmaAllocateMemoryForBuffer(
-        [[maybe_unused]] VmaAllocator allocator,
-        VkBuffer buffer,
-        [[maybe_unused]] VmaAllocationCreateInfo const* pCreateInfo,
-        VmaAllocation* pAllocation,
-        [[maybe_unused]] VmaAllocationInfo* pAllocationInfo);
+VkResult vmaAllocateMemoryForBuffer([[maybe_unused]] VmaAllocator allocator, VkBuffer buffer,
+                                    [[maybe_unused]] VmaAllocationCreateInfo const *pCreateInfo,
+                                    VmaAllocation *pAllocation, [[maybe_unused]] VmaAllocationInfo *pAllocationInfo);
 
-    void vmaFreeMemory(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VmaAllocation allocation);
+void vmaFreeMemory([[maybe_unused]] VmaAllocator allocator, [[maybe_unused]] VmaAllocation allocation);
 
-    VkResult vmaBindImageMemory2(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VmaAllocation allocation,
-        [[maybe_unused]] VkDeviceSize allocationLocalOffset,
-        [[maybe_unused]] VkImage image,
-        [[maybe_unused]] void const* pNext);
+VkResult vmaBindImageMemory2([[maybe_unused]] VmaAllocator allocator, [[maybe_unused]] VmaAllocation allocation,
+                             [[maybe_unused]] VkDeviceSize allocationLocalOffset, [[maybe_unused]] VkImage image,
+                             [[maybe_unused]] void const *pNext);
 
-    VkResult vmaBindBufferMemory2(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VmaAllocation allocation,
-        [[maybe_unused]] VkDeviceSize allocationLocalOffset,
-        [[maybe_unused]] VkBuffer buffer,
-        [[maybe_unused]] void const* pNext);
+VkResult vmaBindBufferMemory2([[maybe_unused]] VmaAllocator allocator, [[maybe_unused]] VmaAllocation allocation,
+                              [[maybe_unused]] VkDeviceSize allocationLocalOffset, [[maybe_unused]] VkBuffer buffer,
+                              [[maybe_unused]] void const *pNext);
 
-    void vmaGetAllocationInfo(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VmaAllocation allocation,
-        VmaAllocationInfo* pAllocationInfo);
+void vmaGetAllocationInfo([[maybe_unused]] VmaAllocator allocator, [[maybe_unused]] VmaAllocation allocation,
+                          VmaAllocationInfo *pAllocationInfo);
 }
 
-class GraphAllocatorAdvancedTest : public ::testing::Test
-{
+class GraphAllocatorAdvancedTest : public ::testing::Test {
     template <class RequirementsTy>
-    static void mock_vk_get_requirements_2(
-        [[maybe_unused]] VkDevice,
-        [[maybe_unused]] RequirementsTy const*,
-        VkMemoryRequirements2* pMemoryRequirements)
-    {
+    static void mock_vk_get_requirements_2([[maybe_unused]] VkDevice, [[maybe_unused]] RequirementsTy const *,
+                                           VkMemoryRequirements2 *pMemoryRequirements) {
         pMemoryRequirements->memoryRequirements.size = requested_size;
         pMemoryRequirements->memoryRequirements.alignment = requested_alignment;
         pMemoryRequirements->memoryRequirements.memoryTypeBits = requested_memory_bits;
 
-        if (pMemoryRequirements->pNext)
-        {
-            auto const next = static_cast<VkMemoryDedicatedRequirements*>(pMemoryRequirements->pNext);
-            if (next->sType == VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS)
-            {
+        if (pMemoryRequirements->pNext) {
+            auto const next = static_cast<VkMemoryDedicatedRequirements *>(pMemoryRequirements->pNext);
+            if (next->sType == VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS) {
                 next->prefersDedicatedAllocation = requested_prefers_dedicated_allocation;
                 next->requiresDedicatedAllocation = requested_requires_dedicated_allocation;
             }
@@ -79,22 +54,15 @@ class GraphAllocatorAdvancedTest : public ::testing::Test
     }
 
     template <class InfoTy, class ResourceTy>
-    static VkResult mock_vk_create_resource(
-        [[maybe_unused]] VkDevice,
-        [[maybe_unused]] InfoTy const* pCreateInfo,
-        [[maybe_unused]] VkAllocationCallbacks const*,
-        ResourceTy* resource)
-    {
-        if constexpr (std::same_as<ResourceTy, VkImage>)
-        {
+    static VkResult mock_vk_create_resource([[maybe_unused]] VkDevice, [[maybe_unused]] InfoTy const *pCreateInfo,
+                                            [[maybe_unused]] VkAllocationCallbacks const *, ResourceTy *resource) {
+        if constexpr (std::same_as<ResourceTy, VkImage>) {
             if (failAtImageCreationIndex && *failAtImageCreationIndex == createdImageCount)
                 return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
             ++createdImageCount;
             *resource = reinterpret_cast<ResourceTy>(static_cast<uintptr_t>(0x2000 + createdImageCount));
-        }
-        else
-        {
+        } else {
             if (failAtBufferCreationIndex && *failAtBufferCreationIndex == createdBufferCount)
                 return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
@@ -106,20 +74,16 @@ class GraphAllocatorAdvancedTest : public ::testing::Test
     }
 
     template <class ResourceTy>
-    static void mock_vk_destroy_resource(
-        [[maybe_unused]] VkDevice,
-        [[maybe_unused]] ResourceTy,
-        [[maybe_unused]] VkAllocationCallbacks const*)
-    {
+    static void mock_vk_destroy_resource([[maybe_unused]] VkDevice, [[maybe_unused]] ResourceTy,
+                                         [[maybe_unused]] VkAllocationCallbacks const *) {
         if constexpr (std::same_as<ResourceTy, VkImage>)
             ++destroyedImageCount;
         else
             ++destroyedBufferCount;
     }
 
-public:
-    static VkResult mock_vma_allocate_memory(VmaAllocation* pAllocation)
-    {
+  public:
+    static VkResult mock_vma_allocate_memory(VmaAllocation *pAllocation) {
         if (failAtVmaAllocIndex && *failAtVmaAllocIndex == vmaAllocatedCount)
             return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
@@ -128,25 +92,19 @@ public:
         return VK_SUCCESS;
     }
 
-    static VkResult mock_vma_allocate_for_image(VkImage, VmaAllocation* pAllocation)
-    {
+    static VkResult mock_vma_allocate_for_image(VkImage, VmaAllocation *pAllocation) {
         ++vmaDedicatedImageAllocCount;
         return mock_vma_allocate_memory(pAllocation);
     }
 
-    static VkResult mock_vma_allocate_for_buffer(VkBuffer, VmaAllocation* pAllocation)
-    {
+    static VkResult mock_vma_allocate_for_buffer(VkBuffer, VmaAllocation *pAllocation) {
         ++vmaDedicatedBufferAllocCount;
         return mock_vma_allocate_memory(pAllocation);
     }
 
-    static void mock_vma_free_memory()
-    {
-        ++vmaFreedCount;
-    }
+    static void mock_vma_free_memory() { ++vmaFreedCount; }
 
-    static VkResult mock_vma_bind_image()
-    {
+    static VkResult mock_vma_bind_image() {
         if (failAtVmaBindIndex && *failAtVmaBindIndex == vmaBoundImageCount + vmaBoundBufferCount)
             return VK_ERROR_INITIALIZATION_FAILED;
 
@@ -154,8 +112,7 @@ public:
         return VK_SUCCESS;
     }
 
-    static VkResult mock_vma_bind_buffer()
-    {
+    static VkResult mock_vma_bind_buffer() {
         if (failAtVmaBindIndex && *failAtVmaBindIndex == vmaBoundImageCount + vmaBoundBufferCount)
             return VK_ERROR_INITIALIZATION_FAILED;
 
@@ -163,32 +120,27 @@ public:
         return VK_SUCCESS;
     }
 
-    static void mock_vma_get_allocation_info(VmaAllocationInfo* pAllocationInfo)
-    {
+    static void mock_vma_get_allocation_info(VmaAllocationInfo *pAllocationInfo) {
         pAllocationInfo->deviceMemory = dummyDeviceMemory;
         pAllocationInfo->pMappedData = dummyMappedData;
     }
 
-protected:
-    void SetUp() override
-    {
-        vk::detail::defaultDispatchLoaderDynamic
-            .vkGetImageMemoryRequirements2 = &mock_vk_get_requirements_2<VkImageMemoryRequirementsInfo2>;
+  protected:
+    void SetUp() override {
+        vk::detail::defaultDispatchLoaderDynamic.vkGetImageMemoryRequirements2 =
+            &mock_vk_get_requirements_2<VkImageMemoryRequirementsInfo2>;
 
-        vk::detail::defaultDispatchLoaderDynamic
-            .vkGetBufferMemoryRequirements2 = &mock_vk_get_requirements_2<VkBufferMemoryRequirementsInfo2>;
+        vk::detail::defaultDispatchLoaderDynamic.vkGetBufferMemoryRequirements2 =
+            &mock_vk_get_requirements_2<VkBufferMemoryRequirementsInfo2>;
 
-        vk::detail::defaultDispatchLoaderDynamic
-            .vkCreateImage = &mock_vk_create_resource<VkImageCreateInfo, VkImage>;
+        vk::detail::defaultDispatchLoaderDynamic.vkCreateImage = &mock_vk_create_resource<VkImageCreateInfo, VkImage>;
 
-        vk::detail::defaultDispatchLoaderDynamic
-            .vkCreateBuffer = &mock_vk_create_resource<VkBufferCreateInfo, VkBuffer>;
+        vk::detail::defaultDispatchLoaderDynamic.vkCreateBuffer =
+            &mock_vk_create_resource<VkBufferCreateInfo, VkBuffer>;
 
-        vk::detail::defaultDispatchLoaderDynamic
-            .vkDestroyImage = &mock_vk_destroy_resource<VkImage>;
+        vk::detail::defaultDispatchLoaderDynamic.vkDestroyImage = &mock_vk_destroy_resource<VkImage>;
 
-        vk::detail::defaultDispatchLoaderDynamic
-            .vkDestroyBuffer = &mock_vk_destroy_resource<VkBuffer>;
+        vk::detail::defaultDispatchLoaderDynamic.vkDestroyBuffer = &mock_vk_destroy_resource<VkBuffer>;
 
         createdImageCount = 0;
         createdBufferCount = 0;
@@ -223,14 +175,11 @@ protected:
 
     static inline const vk::Device dummyDevice = reinterpret_cast<VkDevice>(static_cast<uintptr_t>(0x1111));
     static inline const VmaAllocator dummyAllocator = reinterpret_cast<VmaAllocator>(static_cast<uintptr_t>(0x4444));
-    static inline const VkDeviceMemory dummyDeviceMemory = reinterpret_cast<VkDeviceMemory>(static_cast<uintptr_t>(0x7777));
-    static inline void* const dummyMappedData = reinterpret_cast<void*>(static_cast<uintptr_t>(0x8888));
+    static inline const VkDeviceMemory dummyDeviceMemory =
+        reinterpret_cast<VkDeviceMemory>(static_cast<uintptr_t>(0x7777));
+    static inline void *const dummyMappedData = reinterpret_cast<void *>(static_cast<uintptr_t>(0x8888));
 
-    static constexpr caldera::FamilyNumbers dummyFamilies = {
-        .graphics = 0,
-        .transfer = 1,
-        .compute = 2
-    };
+    static constexpr caldera::FamilyNumbers dummyFamilies = {.graphics = 0, .transfer = 1, .compute = 2};
 
     static inline uint32_t createdImageCount = 0;
     static inline uint32_t createdBufferCount = 0;
@@ -253,89 +202,60 @@ protected:
     static inline std::optional<uint32_t> failAtVmaBindIndex = std::nullopt;
 };
 
-extern "C"
-{
-    VkResult vmaAllocateMemory(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VkMemoryRequirements const* pVkMemoryRequirements,
-        [[maybe_unused]] VmaAllocationCreateInfo const* pCreateInfo,
-        VmaAllocation* pAllocation,
-        [[maybe_unused]] VmaAllocationInfo* pAllocationInfo)
-    {
-        return GraphAllocatorAdvancedTest::mock_vma_allocate_memory(pAllocation);
-    }
+extern "C" {
+VkResult vmaAllocateMemory([[maybe_unused]] VmaAllocator allocator,
+                           [[maybe_unused]] VkMemoryRequirements const *pVkMemoryRequirements,
+                           [[maybe_unused]] VmaAllocationCreateInfo const *pCreateInfo, VmaAllocation *pAllocation,
+                           [[maybe_unused]] VmaAllocationInfo *pAllocationInfo) {
+    return GraphAllocatorAdvancedTest::mock_vma_allocate_memory(pAllocation);
+}
 
-    VkResult vmaAllocateMemoryForImage(
-        [[maybe_unused]] VmaAllocator allocator,
-        VkImage image,
-        [[maybe_unused]] VmaAllocationCreateInfo const* pCreateInfo,
-        VmaAllocation* pAllocation,
-        [[maybe_unused]] VmaAllocationInfo* pAllocationInfo)
-    {
-        return GraphAllocatorAdvancedTest::mock_vma_allocate_for_image(image, pAllocation);
-    }
+VkResult vmaAllocateMemoryForImage([[maybe_unused]] VmaAllocator allocator, VkImage image,
+                                   [[maybe_unused]] VmaAllocationCreateInfo const *pCreateInfo,
+                                   VmaAllocation *pAllocation, [[maybe_unused]] VmaAllocationInfo *pAllocationInfo) {
+    return GraphAllocatorAdvancedTest::mock_vma_allocate_for_image(image, pAllocation);
+}
 
-    VkResult vmaAllocateMemoryForBuffer(
-        [[maybe_unused]] VmaAllocator allocator,
-        VkBuffer buffer,
-        [[maybe_unused]] VmaAllocationCreateInfo const* pCreateInfo,
-        VmaAllocation* pAllocation,
-        [[maybe_unused]] VmaAllocationInfo* pAllocationInfo)
-    {
-        return GraphAllocatorAdvancedTest::mock_vma_allocate_for_buffer(buffer, pAllocation);
-    }
+VkResult vmaAllocateMemoryForBuffer([[maybe_unused]] VmaAllocator allocator, VkBuffer buffer,
+                                    [[maybe_unused]] VmaAllocationCreateInfo const *pCreateInfo,
+                                    VmaAllocation *pAllocation, [[maybe_unused]] VmaAllocationInfo *pAllocationInfo) {
+    return GraphAllocatorAdvancedTest::mock_vma_allocate_for_buffer(buffer, pAllocation);
+}
 
-    void vmaFreeMemory(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VmaAllocation allocation)
-    {
-        GraphAllocatorAdvancedTest::mock_vma_free_memory();
-    }
+void vmaFreeMemory([[maybe_unused]] VmaAllocator allocator, [[maybe_unused]] VmaAllocation allocation) {
+    GraphAllocatorAdvancedTest::mock_vma_free_memory();
+}
 
-    VkResult vmaBindImageMemory2(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VmaAllocation allocation,
-        [[maybe_unused]] VkDeviceSize allocationLocalOffset,
-        [[maybe_unused]] VkImage image,
-        [[maybe_unused]] void const* pNext)
-    {
-        return GraphAllocatorAdvancedTest::mock_vma_bind_image();
-    }
+VkResult vmaBindImageMemory2([[maybe_unused]] VmaAllocator allocator, [[maybe_unused]] VmaAllocation allocation,
+                             [[maybe_unused]] VkDeviceSize allocationLocalOffset, [[maybe_unused]] VkImage image,
+                             [[maybe_unused]] void const *pNext) {
+    return GraphAllocatorAdvancedTest::mock_vma_bind_image();
+}
 
-    VkResult vmaBindBufferMemory2(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VmaAllocation allocation,
-        [[maybe_unused]] VkDeviceSize allocationLocalOffset,
-        [[maybe_unused]] VkBuffer buffer,
-        [[maybe_unused]] void const* pNext)
-    {
-        return GraphAllocatorAdvancedTest::mock_vma_bind_buffer();
-    }
+VkResult vmaBindBufferMemory2([[maybe_unused]] VmaAllocator allocator, [[maybe_unused]] VmaAllocation allocation,
+                              [[maybe_unused]] VkDeviceSize allocationLocalOffset, [[maybe_unused]] VkBuffer buffer,
+                              [[maybe_unused]] void const *pNext) {
+    return GraphAllocatorAdvancedTest::mock_vma_bind_buffer();
+}
 
-    void vmaGetAllocationInfo(
-        [[maybe_unused]] VmaAllocator allocator,
-        [[maybe_unused]] VmaAllocation allocation,
-        VmaAllocationInfo* pAllocationInfo)
-    {
-        GraphAllocatorAdvancedTest::mock_vma_get_allocation_info(pAllocationInfo);
-    }
+void vmaGetAllocationInfo([[maybe_unused]] VmaAllocator allocator, [[maybe_unused]] VmaAllocation allocation,
+                          VmaAllocationInfo *pAllocationInfo) {
+    GraphAllocatorAdvancedTest::mock_vma_get_allocation_info(pAllocationInfo);
+}
 }
 
 namespace cd = caldera::detail;
 
-TEST_F(GraphAllocatorAdvancedTest, DescribeAllocationsPrefersDedicatedMemory)
-{
+TEST_F(GraphAllocatorAdvancedTest, DescribeAllocationsPrefersDedicatedMemory) {
     requested_prefers_dedicated_allocation = VK_TRUE;
     requested_requires_dedicated_allocation = VK_FALSE;
 
-    caldera::ImageID constexpr dummyId = { .isTransient = 1, .index = 0 };
+    caldera::ImageID constexpr dummyId = {.isTransient = 1, .index = 0};
 
-    cd::ImageTrackingTable const table = {
-        { dummyId, caldera::detail::ImageTrackedInfo{} }
-    };
+    cd::ImageTrackingTable const table = {{dummyId, caldera::detail::ImageTrackedInfo{}}};
 
     vk::Image const dummyImage = reinterpret_cast<VkImage>(static_cast<uintptr_t>(0x2222));
-    std::vector const allocated = { dummyImage };
+    std::vector const allocated = {dummyImage};
 
     auto const result = cd::describe_allocations<caldera::ImageTag>(dummyDevice, table, allocated);
 
@@ -345,19 +265,16 @@ TEST_F(GraphAllocatorAdvancedTest, DescribeAllocationsPrefersDedicatedMemory)
     EXPECT_EQ(std::get<vk::Image>(result.descriptionList[0].dedicatedTarget), dummyImage);
 }
 
-TEST_F(GraphAllocatorAdvancedTest, DescribeAllocationsNoDedicatedMemory)
-{
+TEST_F(GraphAllocatorAdvancedTest, DescribeAllocationsNoDedicatedMemory) {
     requested_prefers_dedicated_allocation = VK_FALSE;
     requested_requires_dedicated_allocation = VK_FALSE;
 
-    caldera::BufferID constexpr dummyId = { .isTransient = 1, .index = 0 };
+    caldera::BufferID constexpr dummyId = {.isTransient = 1, .index = 0};
 
-    cd::BufferTrackingTable const table = {
-        { dummyId, caldera::detail::BufferTrackedInfo{} }
-    };
+    cd::BufferTrackingTable const table = {{dummyId, caldera::detail::BufferTrackedInfo{}}};
 
     vk::Buffer const dummyBuffer = reinterpret_cast<VkBuffer>(static_cast<uintptr_t>(0x3333));
-    std::vector const allocated = { dummyBuffer };
+    std::vector const allocated = {dummyBuffer};
 
     auto const result = cd::describe_allocations<caldera::BufferTag>(dummyDevice, table, allocated);
 
@@ -366,24 +283,17 @@ TEST_F(GraphAllocatorAdvancedTest, DescribeAllocationsNoDedicatedMemory)
     EXPECT_TRUE(std::holds_alternative<std::monostate>(result.descriptionList[0].dedicatedTarget));
 }
 
-TEST_F(GraphAllocatorAdvancedTest, AllocateSuccessAndDeallocate)
-{
-    caldera::GraphIR const ir {
-        .transientImages = { caldera::ImageDescription{}, caldera::ImageDescription{} },
-        .transientBuffers = { caldera::BufferDescription{} },
-        .passes = {},
-        .imageVersions = {},
-        .bufferVersions = {}
-    };
+TEST_F(GraphAllocatorAdvancedTest, AllocateSuccessAndDeallocate) {
+    caldera::GraphIR const ir{.transientImages = {caldera::ImageDescription{}, caldera::ImageDescription{}},
+                              .transientBuffers = {caldera::BufferDescription{}},
+                              .passes = {},
+                              .imageVersions = {},
+                              .bufferVersions = {}};
 
-    cd::ImageTrackingTable const imageTracking = {
-        { caldera::ImageID{ 1, 0 }, cd::ImageTrackedInfo{} },
-        { caldera::ImageID{ 1, 1 }, cd::ImageTrackedInfo{} }
-    };
+    cd::ImageTrackingTable const imageTracking = {{caldera::ImageID{1, 0}, cd::ImageTrackedInfo{}},
+                                                  {caldera::ImageID{1, 1}, cd::ImageTrackedInfo{}}};
 
-    cd::BufferTrackingTable const bufferTracking = {
-        { caldera::BufferID{ 1, 0 }, cd::BufferTrackedInfo{} }
-    };
+    cd::BufferTrackingTable const bufferTracking = {{caldera::BufferID{1, 0}, cd::BufferTrackedInfo{}}};
 
     cd::GraphAllocator allocator(dummyDevice, dummyAllocator, dummyFamilies);
 
@@ -417,23 +327,16 @@ TEST_F(GraphAllocatorAdvancedTest, AllocateSuccessAndDeallocate)
     EXPECT_TRUE(result->bufferHeaps.empty());
 }
 
-TEST_F(GraphAllocatorAdvancedTest, AllocateRollbackOnBufferFailure)
-{
-    caldera::GraphIR const ir {
-        .transientImages = { caldera::ImageDescription{} },
-        .transientBuffers = { caldera::BufferDescription{} },
-        .passes = {},
-        .imageVersions = {},
-        .bufferVersions = {}
-    };
+TEST_F(GraphAllocatorAdvancedTest, AllocateRollbackOnBufferFailure) {
+    caldera::GraphIR const ir{.transientImages = {caldera::ImageDescription{}},
+                              .transientBuffers = {caldera::BufferDescription{}},
+                              .passes = {},
+                              .imageVersions = {},
+                              .bufferVersions = {}};
 
-    cd::ImageTrackingTable const imageTracking = {
-        { caldera::ImageID{ 1, 0 }, cd::ImageTrackedInfo{} }
-    };
+    cd::ImageTrackingTable const imageTracking = {{caldera::ImageID{1, 0}, cd::ImageTrackedInfo{}}};
 
-    cd::BufferTrackingTable const bufferTracking = {
-        { caldera::BufferID{ 1, 0 }, cd::BufferTrackedInfo{} }
-    };
+    cd::BufferTrackingTable const bufferTracking = {{caldera::BufferID{1, 0}, cd::BufferTrackedInfo{}}};
 
     failAtBufferCreationIndex = 0;
 
@@ -450,19 +353,14 @@ TEST_F(GraphAllocatorAdvancedTest, AllocateRollbackOnBufferFailure)
     EXPECT_EQ(vmaFreedCount, 1);
 }
 
-TEST_F(GraphAllocatorAdvancedTest, AllocateRollbackOnVmaAllocationFailure)
-{
-    caldera::GraphIR const ir {
-        .transientImages = { caldera::ImageDescription{} },
-        .transientBuffers = {},
-        .passes = {},
-        .imageVersions = {},
-        .bufferVersions = {}
-    };
+TEST_F(GraphAllocatorAdvancedTest, AllocateRollbackOnVmaAllocationFailure) {
+    caldera::GraphIR const ir{.transientImages = {caldera::ImageDescription{}},
+                              .transientBuffers = {},
+                              .passes = {},
+                              .imageVersions = {},
+                              .bufferVersions = {}};
 
-    cd::ImageTrackingTable const imageTracking = {
-        { caldera::ImageID{ 1, 0 }, cd::ImageTrackedInfo{} }
-    };
+    cd::ImageTrackingTable const imageTracking = {{caldera::ImageID{1, 0}, cd::ImageTrackedInfo{}}};
 
     cd::BufferTrackingTable const bufferTracking;
 
@@ -481,19 +379,14 @@ TEST_F(GraphAllocatorAdvancedTest, AllocateRollbackOnVmaAllocationFailure)
     EXPECT_EQ(vmaFreedCount, 0);
 }
 
-TEST_F(GraphAllocatorAdvancedTest, AllocateRollbackOnVmaBindFailure)
-{
-    caldera::GraphIR const ir {
-        .transientImages = { caldera::ImageDescription{} },
-        .transientBuffers = {},
-        .passes = {},
-        .imageVersions = {},
-        .bufferVersions = {}
-    };
+TEST_F(GraphAllocatorAdvancedTest, AllocateRollbackOnVmaBindFailure) {
+    caldera::GraphIR const ir{.transientImages = {caldera::ImageDescription{}},
+                              .transientBuffers = {},
+                              .passes = {},
+                              .imageVersions = {},
+                              .bufferVersions = {}};
 
-    cd::ImageTrackingTable const imageTracking = {
-        { caldera::ImageID{ 1, 0 }, cd::ImageTrackedInfo{} }
-    };
+    cd::ImageTrackingTable const imageTracking = {{caldera::ImageID{1, 0}, cd::ImageTrackedInfo{}}};
 
     cd::BufferTrackingTable const bufferTracking;
 
