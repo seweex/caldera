@@ -130,9 +130,6 @@ namespace caldera
     {
         vk::BufferCreateFlags flags;
         vk::DeviceSize size;
-
-        bool hostVisible;
-        bool constantlyMapped;
     };
 
     /// @brief Description of pass dependency
