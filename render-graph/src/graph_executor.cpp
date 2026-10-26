@@ -130,7 +130,7 @@ namespace
         memory.submittablePasses.clear();
 
         memory.imageBarriers.reserve(graph.imageBarriers.size() + graph.trackedImages.size());
-        memory.bufferBarriers.reserve(graph.bufferBarriers.size() + graph.trackedBuffer.size());
+        memory.bufferBarriers.reserve(graph.bufferBarriers.size() + graph.trackedBuffers.size());
 
         memory.passDependencies.reserve(graph.passDependencies.size());
         memory.submittablePasses.reserve(graph.compiledPasses.size());

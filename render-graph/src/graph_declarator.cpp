@@ -28,7 +28,7 @@ namespace caldera
         return ::make_transient<BufferTag>(m_ir.transientBuffers, description);
     }
 
-    GraphIR GraphDeclarator::extract() const & noexcept {
+    GraphIR GraphDeclarator::extract() const & {
         return m_ir;
     }
 

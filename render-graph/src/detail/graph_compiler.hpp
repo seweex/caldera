@@ -637,8 +637,8 @@ namespace caldera::detail
          CompiledGraph result;
         result.compiledPasses = make_passes(ir, families);
 
-        result.trackedImages = make_tracking_table< ImageTrackingTable>(ir.imageVersions);
-        result.trackedBuffer = make_tracking_table< BufferTrackingTable>(ir.bufferVersions);
+        result.trackedImages = make_tracking_table<ImageTrackingTable>(ir.imageVersions);
+        result.trackedBuffers = make_tracking_table<BufferTrackingTable>(ir.bufferVersions);
 
         append_with_barriers< ImageTag>(
             result,
@@ -661,7 +661,7 @@ namespace caldera::detail
             & CompiledPass::bufferPostBarrierOffset,
             & CompiledPass::bufferPostBarrierSize,
             ir.bufferVersions,
-            result.trackedBuffer,
+            result.trackedBuffers,
             passOrder);
 
         append_with_allowed_resources< ImageTag>(

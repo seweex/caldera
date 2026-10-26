@@ -33,7 +33,7 @@ namespace caldera
         detail::GraphAllocator graphAllocator { device, allocator, families };
 
         auto compiled = graphCompiler.compile(families, ir);
-        auto allocated = graphAllocator.allocate(ir, compiled.trackedImages, compiled.trackedBuffer);
+        auto allocated = graphAllocator.allocate(ir, compiled.trackedImages, compiled.trackedBuffers);
 
         if (!allocated)
             return std::unexpected{ allocated.error() };
