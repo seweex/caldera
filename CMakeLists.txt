@@ -30,8 +30,6 @@ else()
     add_compile_options(-fno-exceptions -fno-rtti)
 endif()
 
-find_package(Git REQUIRED)
-find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 
