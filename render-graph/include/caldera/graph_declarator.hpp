@@ -12,12 +12,47 @@
 
 namespace caldera
 {
+    /**
+     * @brief Class for describing what render graph does and what
+     * resources it accesses
+     */
     class GraphDeclarator
     {
     public:
+        /**
+         * @brief Declares an image that exists inside the graph only
+         *
+         * @param description Description of a transient image
+         * @return ID of the newly declared transient image
+         *
+         * @note Transient resources doesn't save its state across execution
+         */
         [[nodiscard]] ImageID transient_image(ImageDescription const& description);
+
+        /**
+         * @brief Declares a buffer that exists inside the graph only
+         *
+         * @param description Description of a transient buffer
+         * @return ID of the newly declared transient buffer
+         *
+         * @note Transient resources doesn't save its state across execution
+         */
         [[nodiscard]] BufferID transient_buffer(BufferDescription const& description);
 
+        /**
+         * @brief Adds pass to the render graph currently being described
+         *
+         * @tparam UserData Type of user data that will be provided to the callback
+         *
+         * @param passName Name of the pass currently being added
+         * @param passType Type of the pass currently being added
+         * @param setup Invocable object for setting up the PassDeclarator and UserData that
+         * will be invoked instantly
+         * @param callback Invocable object for executing during a graph execution that writes
+         * to a vk::CommandBuffer object
+         *
+         * @return Reference to the current GraphDeclarator
+         */
         template <class UserData>
             requires (std::default_initializable<UserData> && std::copy_constructible<UserData>)
         GraphDeclarator& add_pass(
@@ -40,6 +75,18 @@ namespace caldera
             return *this;
         }
 
+        /**
+         * @brief Adds pass with no user data to the render graph currently being described
+         *
+         * @param passName Name of the pass currently being added
+         * @param passType Type of the pass currently being added
+         * @param setup Invocable object for setting up the PassDeclarator and UserData that
+         * will be invoked instantly
+         * @param callback Invocable object for executing during a graph execution that writes
+         * to a vk::CommandBuffer object
+         *
+         * @return Reference to the current GraphDeclarator
+         */
         GraphDeclarator& add_pass(
             std::string_view const passName,
             FamilyType const passType,
@@ -57,7 +104,16 @@ namespace caldera
             return *this;
         }
 
+        /**
+         * @brief Get described graph representation
+         * @return Graph intermediate representation object
+         */
         [[nodiscard]] GraphIR extract() const & noexcept;
+
+        /**
+         * @brief Retrieves described graph representation and clears the GraphDeclarator
+         * @return Graph intermediate representation object
+         */
         [[nodiscard]] GraphIR extract() && noexcept;
 
     private:
