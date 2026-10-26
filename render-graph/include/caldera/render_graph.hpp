@@ -24,6 +24,8 @@ namespace caldera
 
     public:
         /**
+         * @brief Compiles and allocated a render graph according to specified
+         * graph intermediate representation
          *
          * @param device Vulkan device handle to allocate resources with
          * @param allocator VMA allocator handle created with specified device

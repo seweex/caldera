@@ -24,6 +24,15 @@ namespace caldera
          *
          * @return SubmittableGraph object if execution is successful, otherwise
          * vk::Result code of occurred error
+         *
+         * @warning Returned SubmittableGraph is valid until the next execution of
+         * any render graph with the specified ExecutionMemory object. If you
+         * want to save the SubmittableGraph, don't reuse the ExecutionMemory anymore
+         * while you still need the result of this method anymore, or copy the
+         * result first
+         *
+         * @note This method doesn't submit any vk::CommandBuffer object. It only
+         * records them
          */
         [[nodiscard]] std::expected<SubmittableGraph, vk::Result>
         execute(

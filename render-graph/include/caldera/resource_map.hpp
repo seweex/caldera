@@ -49,6 +49,9 @@ namespace caldera
          *
          * @param id Image ID to get handle mapped to
          * @return Image resource handle mapped to the specified ID or VK_NULL_HANDLE
+         *
+         * @note During an execution, you can access only to the resources
+         * the pass reads or writes. Access to unallowed resource occurs to assert failure
          */
         [[nodiscard]] vk::Image at(ImageID id) const;
 
@@ -57,6 +60,9 @@ namespace caldera
          *
          * @param id Buffer ID to get handle mapped to
          * @return Buffer resource handle mapped to the specified ID or VK_NULL_HANDLE
+         *
+         * @note During an execution, you can access only to the resources
+         * the pass reads or writes. Access to unallowed resource occurs to assert failure
          */
         [[nodiscard]] vk::Buffer at(BufferID id) const;
 

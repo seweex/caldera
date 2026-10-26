@@ -52,6 +52,9 @@ namespace caldera
          * to a vk::CommandBuffer object
          *
          * @return Reference to the current GraphDeclarator
+         *
+         * @note UserData is copied to the pass data and stored there through the graph is
+         * destroyed. The user data saves its state across execution of the graph
          */
         template <class UserData>
             requires (std::default_initializable<UserData> && std::copy_constructible<UserData>)

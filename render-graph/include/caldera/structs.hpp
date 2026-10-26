@@ -140,7 +140,7 @@ namespace caldera
     {
         /**
          * @brief Execution order index of the pass the current one
-         * waits for of signals to
+         * waits for or signals to
          */
         uint32_t otherPass;
 
@@ -412,10 +412,13 @@ namespace caldera
         std::span<Pass> passes;
     };
 
-    /// @brief Context of execution
+    /**
+     * @brief Context of execution
+     * @note All pointers in this structure are non-owning and must
+     * refer to valid managers
+     */
     struct ExecutionContext
     {
-        // FamilyNumbers families;
         ResourceMap *resourceMap;
         ResourceStateManager *stateManager;
         CommandBufferDistributor *distributor;
