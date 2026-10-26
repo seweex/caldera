@@ -373,7 +373,7 @@ namespace caldera::detail
         std::vector<PassDependency> passDependencies;
 
         ImageTrackingTable trackedImages;
-        BufferTrackingTable trackedBuffer;
+        BufferTrackingTable trackedBuffers;
 
         std::vector<CompiledPass> compiledPasses;
     };
