@@ -16,52 +16,102 @@
 
 namespace caldera
 {
+    /// @brief Policy of mapping of a memory block
     enum class MappingPolicy
     {
+        /// Requires persistent mapping for allocation and prefers coherent memory
         persistent_coherent,
+
+        /// Requires persistent mapping for allocation and prefers non-coherent memory
         persistent_noncoherent,
+
+        /// Requires mapping for allocation and prefers non-persistent mapping and non-coherent memory
         dynamic_noncoherent,
+
+        /// Doesn't require any mapping
         unmappable
     };
 
+    /// @brief Type of queue family
     enum class FamilyType
     {
+        /// @brief Queue with graphics command support
         graphics,
+
+        /// @brief Queue with transfer command support
         transfer,
+
+        /// @brief Queue with compute command support
         compute
     };
 
+    /// @brief Queue family indices for each type of queue family
     struct FamilyNumbers
     {
         uint32_t graphics;
         uint32_t transfer;
         uint32_t compute;
 
+        /**
+         * @brief Returns queue family index of the required queue family type
+         *
+         * @param type Type of family to get index of
+         * @return Index of required queue family type
+         */
         [[nodiscard]] uint32_t get(FamilyType type) const noexcept;
     };
 
+    /// @brief Modes of image usage
     enum class ImageUsage
     {
+        /// @brief Image is used as transfer source or destination
         transfer,
+
+        /// @brief Image is used as a sampled image
         sampled,
+
+        /// @brief Image is used as a shader storage image
         storage,
+
+        /// @brief Image is a color attachment
         color_attachment,
+
+        /// @brief Image is a depth or/and stencil attachment
         depth_stencil_attachment,
+
+        /// @brief Image is used as a input attachment
         input_attachment,
+
+        /// @brief Image is used as a resolve attachment
         resolve_attachment,
+
+        /// @brief Image is used by host
         host
     };
 
+    /// @brief Modes of buffer usage
     enum class BufferUsage
     {
+        /// @brief Buffer is a transfer source or destination
         transfer,
+
+        /// @brief Buffer contains vertices
         vertices,
+
+        /// @brief Buffer contains vertex indices
         indices,
+
+        /// @brief Buffer is used as a uniform buffer
         uniform,
+
+        /// @brief Buffer is used as a shader storage
         storage,
+
+        /// @brief Buffer is used by host
         host
     };
 
+    /// @brief Description of a transient image resource
     struct ImageDescription
     {
         vk::ImageCreateFlags flags;
@@ -75,6 +125,7 @@ namespace caldera
         vk::ImageTiling tiling;
     };
 
+    /// @brief Description of a transient buffer resource
     struct BufferDescription
     {
         vk::BufferCreateFlags flags;
@@ -84,13 +135,23 @@ namespace caldera
         bool constantlyMapped;
     };
 
+    /// @brief Description of pass dependency
     struct PassDependency
     {
+        /**
+         * @brief Execution order index of the pass the current one
+         * waits for or signals to
+         */
         uint32_t otherPass;
+
+        /// Stages of the producer execution to be waited
         vk::PipelineStageFlags2 srcStages;
+
+        /// Stages of the consumer execution to wait on
         vk::PipelineStageFlags2 dstStages;
     };
 
+    /// @brief Last usage of an image
     struct ImageLastState
     {
         vk::PipelineStageFlags2 stages;
@@ -99,6 +160,7 @@ namespace caldera
         uint32_t familyIdx;
     };
 
+    /// @brief Last usage of a buffer
     struct BufferLastState
     {
         vk::PipelineStageFlags2 stages;
@@ -319,6 +381,7 @@ namespace caldera::detail
 
 namespace caldera
 {
+    /// @brief Description of the graph to compile
     struct GraphIR
     {
         std::vector<ImageDescription> transientImages;
@@ -330,26 +393,38 @@ namespace caldera
         detail::BufferVersionTable bufferVersions;
     };
 
+    /// @brief Description of an executed render graph
     struct SubmittableGraph
     {
+        /// @brief Description of a pass in an executed render graph
         struct Pass
         {
+            /// @brief Queue family index the commandBuffer should be submitted to
             uint32_t familyIdx;
+
+            /// @brief Written vulkan command buffer
             vk::CommandBuffer commandBuffer;
+
+            /// @brief Semaphore dependencies of the pass
             std::span<PassDependency> passDependencies;
         };
 
         std::span<Pass> passes;
     };
 
+    /**
+     * @brief Context of execution
+     * @note All pointers in this structure are non-owning and must
+     * refer to valid managers
+     */
     struct ExecutionContext
     {
-        // FamilyNumbers families;
         ResourceMap *resourceMap;
         ResourceStateManager *stateManager;
         CommandBufferDistributor *distributor;
     };
 
+    /// @brief Execution cache memory to avoid dynamic allocations
     struct ExecutionMemory
     {
         std::vector<vk::ImageMemoryBarrier2> imageBarriers;
