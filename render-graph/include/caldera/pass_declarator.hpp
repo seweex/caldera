@@ -10,6 +10,9 @@
 
 namespace caldera
 {
+    /**
+     * @brief Class for simple declaration of a render graph pass
+     */
     class PassDeclarator
     {
         PassDeclarator(
@@ -25,13 +28,52 @@ namespace caldera
         friend class GraphDeclarator;
 
     public:
+        /**
+         * @brief Processes reading of the specific image version
+         *
+         * @param resource Image version to read
+         * @param usage Mode the image will be used in
+         */
         void read(ImageVersion resource, ImageUsage usage);
+
+        /**
+         * @brief Processes reading of the specific buffer version
+         *
+         * @param resource Buffer version to read
+         * @param usage Mode the buffer will be used in
+         */
         void read(BufferVersion resource, BufferUsage usage);
 
+        /**
+         * @brief Processes writing over the specific image version
+         *
+         * @param resource Image version to overwrite
+         * @param usage Mode the image will be used in
+         */
         ImageVersion write(ImageVersion resource, ImageUsage usage);
+
+        /**
+         * @brief Processes writing over the specific buffer version
+         *
+         * @param resource Buffer version to overwrite
+         * @param usage Mode the buffer will be used in
+         */
         BufferVersion write(BufferVersion resource, BufferUsage usage);
 
+        /**
+         * @brief Processes reading of and writing over the specific image version
+         *
+         * @param resource Image version to read and overwrite
+         * @param usage Mode the image will be used in
+         */
         ImageVersion read_write(ImageVersion resource, ImageUsage usage);
+
+        /**
+         * @brief Processes reading of and writing over the specific buffer version
+         *
+         * @param resource Buffer version to read and overwrite
+         * @param usage Mode the buffer will be used in
+         */
         BufferVersion read_write(BufferVersion resource, BufferUsage usage);
 
     private:
