@@ -82,8 +82,8 @@ namespace caldera
     }
 
     void ResourceMap::bind_resource_filters(
-        std::span<ImageID> const images,
-        std::span<BufferID> const buffers) noexcept
+        std::span<ImageID const> const images,
+        std::span<BufferID const> const buffers) noexcept
     {
         m_allowedImages = images;
         m_allowedBuffers = buffers;
