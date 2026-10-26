@@ -1,51 +1,49 @@
 #pragma once
 
-#include <vector>
 #include <caldera/fwd.hpp>
+#include <vector>
 
-namespace caldera
-{
+namespace caldera {
+/**
+ * @brief Stores vulkan resource last states across the graph
+ * executions to provide the most efficient synchronization
+ */
+class ResourceStateManager {
+  public:
     /**
-     * @brief Stores vulkan resource last states across the graph
-     * executions to provide the most efficient synchronization
+     * @brief Maps an image state to the image ID
+     *
+     * @param id Image ID to map the last state to
+     * @param state State of the specified image
      */
-    class ResourceStateManager
-    {
-    public:
-        /**
-         * @brief Maps an image state to the image ID
-         *
-         * @param id Image ID to map the last state to
-         * @param state State of the specified image
-         */
-        void dump(ImageID id, ImageLastState const& state);
+    void dump(ImageID id, ImageLastState const &state);
 
-        /**
-         * @brief Maps a buffer state to the buffer ID
-         *
-         * @param id Buffer ID to map the last state to
-         * @param state State of the specified buffer
-         */
-        void dump(BufferID id, BufferLastState const& state);
+    /**
+     * @brief Maps a buffer state to the buffer ID
+     *
+     * @param id Buffer ID to map the last state to
+     * @param state State of the specified buffer
+     */
+    void dump(BufferID id, BufferLastState const &state);
 
-        /**
-         * @brief Gets the image state mapped to the specified image
-         *
-         * @param id Image ID to get the state mapped to
-         * @return Last image state if was dumped, otherwise initial image state
-         */
-        [[nodiscard]] ImageLastState get_last_state(ImageID id) const;
+    /**
+     * @brief Gets the image state mapped to the specified image
+     *
+     * @param id Image ID to get the state mapped to
+     * @return Last image state if was dumped, otherwise initial image state
+     */
+    [[nodiscard]] ImageLastState get_last_state(ImageID id) const;
 
-        /**
-         * @brief Gets the buffer state mapped to the specified buffer
-         *
-         * @param id Buffer ID to get the state mapped to
-         * @return Last buffer state if was dumped, otherwise initial buffer state
-         */
-        [[nodiscard]] BufferLastState get_last_state(BufferID id) const;
+    /**
+     * @brief Gets the buffer state mapped to the specified buffer
+     *
+     * @param id Buffer ID to get the state mapped to
+     * @return Last buffer state if was dumped, otherwise initial buffer state
+     */
+    [[nodiscard]] BufferLastState get_last_state(BufferID id) const;
 
-    private:
-        std::vector<ImageLastState> m_imageTouches;
-        std::vector<BufferLastState> m_bufferTouches;
-    };
-}
+  private:
+    std::vector<ImageLastState> m_imageTouches;
+    std::vector<BufferLastState> m_bufferTouches;
+};
+} // namespace caldera
