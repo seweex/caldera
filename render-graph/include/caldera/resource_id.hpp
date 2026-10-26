@@ -7,9 +7,16 @@
 
 namespace caldera
 {
+    /// @brief Tag for image-related staff
     struct ImageTag {};
+
+    /// @brief Tag for buffer-related staff
     struct BufferTag {};
 
+    /**
+     * @brief Lightweight struct for identifying vulkan resources
+     * @tparam TagTy Tag of the resource type ID is related on
+     */
     template <class TagTy>
     struct BasicResourceID
     {
@@ -25,6 +32,10 @@ namespace caldera
     static_assert(sizeof(uint32_t) == sizeof(BasicResourceID<ImageTag>));
     static_assert(sizeof(uint32_t) == sizeof(BasicResourceID<BufferTag>));
 
+    /**
+     * @brief Lightweight struct for identifying vulkan resource version
+     * @tparam TagTy Tag of the resource type Version is related on
+     */
     template <class TagTy>
     struct BasicResourceVersion
     {
