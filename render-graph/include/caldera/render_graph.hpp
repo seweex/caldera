@@ -49,5 +49,6 @@ class RenderGraph {
     detail::GraphResources m_resources;
 
     friend class GraphExecutor;
+    friend class GraphProperties;
 };
 } // namespace caldera

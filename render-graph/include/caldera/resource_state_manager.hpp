@@ -16,7 +16,7 @@ class ResourceStateManager {
      * @param id Image ID to map the last state to
      * @param state State of the specified image
      */
-    void dump(ImageID id, ImageLastState const &state);
+    void dump(ImageID id, ImageState const &state);
 
     /**
      * @brief Maps a buffer state to the buffer ID
@@ -24,7 +24,7 @@ class ResourceStateManager {
      * @param id Buffer ID to map the last state to
      * @param state State of the specified buffer
      */
-    void dump(BufferID id, BufferLastState const &state);
+    void dump(BufferID id, BufferState const &state);
 
     /**
      * @brief Gets the image state mapped to the specified image
@@ -32,7 +32,7 @@ class ResourceStateManager {
      * @param id Image ID to get the state mapped to
      * @return Last image state if was dumped, otherwise initial image state
      */
-    [[nodiscard]] ImageLastState get_last_state(ImageID id) const;
+    [[nodiscard]] ImageState get_last_state(ImageID id) const;
 
     /**
      * @brief Gets the buffer state mapped to the specified buffer
@@ -40,10 +40,10 @@ class ResourceStateManager {
      * @param id Buffer ID to get the state mapped to
      * @return Last buffer state if was dumped, otherwise initial buffer state
      */
-    [[nodiscard]] BufferLastState get_last_state(BufferID id) const;
+    [[nodiscard]] BufferState get_last_state(BufferID id) const;
 
   private:
-    std::vector<ImageLastState> m_imageTouches;
-    std::vector<BufferLastState> m_bufferTouches;
+    std::vector<ImageState> m_imageTouches;
+    std::vector<BufferState> m_bufferTouches;
 };
 } // namespace caldera

@@ -57,6 +57,12 @@ struct FamilyNumbers {
     [[nodiscard]] uint32_t get(FamilyType type) const noexcept;
 };
 
+/// @brief Pass count of the certain queue family
+struct FamilyPassCount {
+    uint32_t family;
+    uint32_t passCount;
+};
+
 /// @brief Modes of image usage
 enum class ImageUsage {
     /// @brief Image is used as transfer source or destination
@@ -139,16 +145,16 @@ struct PassDependency {
     vk::PipelineStageFlags2 dstStages;
 };
 
-/// @brief Last usage of an image
-struct ImageLastState {
+/// @brief Usage of an image
+struct ImageState {
     vk::PipelineStageFlags2 stages;
     vk::AccessFlags2 access;
     vk::ImageLayout layout;
     uint32_t familyIdx;
 };
 
-/// @brief Last usage of a buffer
-struct BufferLastState {
+/// @brief Usage of a buffer
+struct BufferState {
     vk::PipelineStageFlags2 stages;
     vk::AccessFlags2 access;
     uint32_t familyIdx;
@@ -374,5 +380,14 @@ struct ExecutionMemory {
 
     std::vector<PassDependency> passDependencies;
     std::vector<SubmittableGraph::Pass> submittablePasses;
+};
+
+/// @brief Semaphore wait or signal sync point
+struct SemaphoreSyncPoint {
+    /// @brief Index of the pass that should wait or signal a semaphore
+    uint32_t passIdx;
+
+    /// @brief Stages at which a pass should wait or signal a semaphore
+    vk::PipelineStageFlags2 flags;
 };
 } // namespace caldera

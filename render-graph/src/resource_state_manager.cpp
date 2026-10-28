@@ -21,11 +21,11 @@ void dump(auto &list, auto const id, auto const &state) {
 } // namespace
 
 namespace caldera {
-void ResourceStateManager::dump(ImageID const id, ImageLastState const &state) { ::dump(m_imageTouches, id, state); }
+void ResourceStateManager::dump(ImageID const id, ImageState const &state) { ::dump(m_imageTouches, id, state); }
 
-void ResourceStateManager::dump(BufferID const id, BufferLastState const &state) { ::dump(m_bufferTouches, id, state); }
+void ResourceStateManager::dump(BufferID const id, BufferState const &state) { ::dump(m_bufferTouches, id, state); }
 
-ImageLastState ResourceStateManager::get_last_state(ImageID const id) const { return ::get(m_imageTouches, id); }
+ImageState ResourceStateManager::get_last_state(ImageID const id) const { return ::get(m_imageTouches, id); }
 
-BufferLastState ResourceStateManager::get_last_state(BufferID const id) const { return ::get(m_bufferTouches, id); }
+BufferState ResourceStateManager::get_last_state(BufferID const id) const { return ::get(m_bufferTouches, id); }
 } // namespace caldera
