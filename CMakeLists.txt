@@ -21,6 +21,8 @@ include(CMakePackageConfigHelpers)
     #add_link_options(-fsanitize=address,undefined)
 # endif()
 
+option(CALDERA_BUILD_TESTS "This option enables building of tests" OFF)
+
 include(cmake/ShaderCompile.txt)
 
 if(MSVC)
@@ -36,5 +38,7 @@ find_package(VulkanMemoryAllocator REQUIRED)
 add_subdirectory(render-graph)
 target_compile_definitions(caldera-render-graph PUBLIC VULKAN_HPP_NO_EXCEPTIONS)
 
-enable_testing()
-add_subdirectory(tests)
+if (CALDERA_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif ()
