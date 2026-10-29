@@ -45,6 +45,11 @@ template <class TagTy> struct BasicResourceVersion {
 
 static_assert(sizeof(uint64_t) == sizeof(BasicResourceVersion<ImageTag>));
 static_assert(sizeof(uint64_t) == sizeof(BasicResourceVersion<BufferTag>));
+
+/// @brief Lightweight struct for identifying requested image views
+struct ImageViewID {
+    uint32_t index;
+};
 } // namespace caldera
 
 namespace std {
