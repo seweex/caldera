@@ -130,6 +130,15 @@ struct BufferDescription {
     vk::DeviceSize size;
 };
 
+/// @brief Description of an image view
+struct ImageViewDescription {
+    vk::ImageViewType type;
+    vk::Format format;
+
+    vk::ComponentMapping mapping;
+    vk::ImageSubresourceRange subresource;
+};
+
 /// @brief Description of pass dependency
 struct PassDependency {
     /**
@@ -200,6 +209,8 @@ struct BufferVersion {
 
 using ImageVersionTable = std::unordered_map<ImageID, std::vector<ImageVersion>>;
 using BufferVersionTable = std::unordered_map<BufferID, std::vector<BufferVersion>>;
+
+using ImageViewRequestList = std::vector<std::pair<ImageID, ImageViewDescription>>;
 
 struct ImageBarrier {
     vk::PipelineStageFlags2 srcStages;
@@ -338,6 +349,7 @@ namespace caldera {
 struct GraphIR {
     std::vector<ImageDescription> transientImages;
     std::vector<BufferDescription> transientBuffers;
+    detail::ImageViewRequestList imageViewRequests;
 
     std::vector<detail::PassDeclaration> passes;
 

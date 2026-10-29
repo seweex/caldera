@@ -60,7 +60,8 @@ class GraphDeclarator {
                               std::function<void(PassDeclarator &, UserData &)> const &setup,
                               std::function<void(vk::CommandBuffer, ResourceMap const &, UserData &)> callback) {
         auto const passIdx = static_cast<uint32_t>(m_ir.passes.size());
-        PassDeclarator passDeclarator{passName, passType, passIdx, m_ir.imageVersions, m_ir.bufferVersions};
+        PassDeclarator passDeclarator{
+            passName, passType, passIdx, m_ir.imageVersions, m_ir.bufferVersions, m_ir.imageViewRequests};
 
         UserData usrData{};
         std::invoke(setup, passDeclarator, usrData);
@@ -90,7 +91,8 @@ class GraphDeclarator {
                               std::function<void(PassDeclarator &)> const &setup,
                               std::function<void(vk::CommandBuffer, ResourceMap const &)> callback) {
         auto const passIdx = static_cast<uint32_t>(m_ir.passes.size());
-        PassDeclarator passDeclarator{passName, passType, passIdx, m_ir.imageVersions, m_ir.bufferVersions};
+        PassDeclarator passDeclarator{
+            passName, passType, passIdx, m_ir.imageVersions, m_ir.bufferVersions, m_ir.imageViewRequests};
 
         std::invoke(setup, passDeclarator);
 

@@ -14,7 +14,7 @@ namespace caldera {
  */
 class PassDeclarator {
     PassDeclarator(std::string_view name, FamilyType family, uint32_t index, detail::ImageVersionTable &imageTable,
-                   detail::BufferVersionTable &bufferTable);
+                   detail::BufferVersionTable &bufferTable, detail::ImageViewRequestList &requestList);
 
     [[nodiscard]] detail::PassDeclaration
     extract(std::function<void(vk::CommandBuffer, ResourceMap const &)> &&) && noexcept;
@@ -104,6 +104,15 @@ class PassDeclarator {
      */
     BufferVersion read_write(BufferVersion resource, BufferUsage usage);
 
+    /**
+     * @brief Request an image view with the certain description for an transient image
+     *
+     * @param image ID of a transient image to create image view for it
+     * @param description Description of the requested image view
+     * @return ID of the requested image view
+     */
+    [[nodiscard]] ImageViewID request_image_view(ImageID image, ImageViewDescription const &description);
+
   private:
     std::string m_name;
     FamilyType m_type;
@@ -111,5 +120,6 @@ class PassDeclarator {
 
     detail::ImageVersionTable *m_imageTable;
     detail::BufferVersionTable *m_bufferTable;
+    detail::ImageViewRequestList *m_imageViewRequests;
 };
 } // namespace caldera
