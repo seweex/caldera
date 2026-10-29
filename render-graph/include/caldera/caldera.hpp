@@ -6,6 +6,7 @@
 #include "structs.hpp"
 
 #include "render_graph.hpp"
+#include "graph_properties.hpp"
 
 #include "graph_declarator.hpp"
 #include "graph_executor.hpp"

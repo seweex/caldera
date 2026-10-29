@@ -26,15 +26,17 @@ enum class ImageUsage;
 enum class BufferUsage;
 
 struct FamilyNumbers;
+struct FamilyPassCount;
 struct ImageDescription;
 struct BufferDescription;
 struct PassDependency;
-struct ImageLastState;
-struct BufferLastState;
+struct ImageState;
+struct BufferState;
 struct GraphIR;
 struct SubmittableGraph;
 struct ExecutionContext;
 struct ExecutionMemory;
+struct SemaphoreSyncPoint;
 
 class CommandBufferDistributor;
 class GraphDeclarator;
@@ -43,6 +45,7 @@ class PassDeclarator;
 class RenderGraph;
 class ResourceMap;
 class ResourceStateManager;
+class GraphProperties;
 } // namespace caldera
 
 namespace caldera::detail {
