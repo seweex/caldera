@@ -132,6 +132,7 @@ struct BufferDescription {
 
 /// @brief Description of an image view
 struct ImageViewDescription {
+    vk::ImageViewCreateFlags flags;
     vk::ImageViewType type;
     vk::Format format;
 
@@ -293,11 +294,17 @@ struct GraphResources {
         void *mapped;
     };
 
+    struct CreatedImageView {
+        vk::ImageView handle;
+    };
+
     std::vector<AllocatedImage> transientImages;
     std::vector<AllocatedBuffer> transientBuffers;
 
     std::vector<AllocatedHeap> imageHeaps;
     std::vector<AllocatedHeap> bufferHeaps;
+
+    std::vector<CreatedImageView> transientImageViews;
 };
 
 struct CompiledPass {
@@ -324,6 +331,9 @@ struct CompiledPass {
     uint32_t allowedBufferOffset;
     uint32_t allowedBufferSize;
 
+    uint32_t allowedImageViewOffset;
+    uint32_t allowedImageViewSize;
+
     uint32_t passDependencyOffset;
     uint32_t passDependencySize;
 };
@@ -334,6 +344,7 @@ struct CompiledGraph {
 
     std::vector<ImageID> allowedImages;
     std::vector<BufferID> allowedBuffers;
+    std::vector<ImageViewID> allowedImageViews;
 
     std::vector<PassDependency> passDependencies;
 

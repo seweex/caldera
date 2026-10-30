@@ -11,10 +11,12 @@ detail::GraphAllocator::allocate(GraphIR const &ir, ImageTrackingTable const &im
                                  BufferTrackingTable const &bufferTracking) {
     auto const imageCount = ir.transientImages.size();
     auto const bufferCount = ir.transientBuffers.size();
+    auto const imageViewCount = ir.imageViewRequests.size();
 
     GraphResources result;
     result.transientImages.reserve(imageCount);
     result.transientBuffers.reserve(bufferCount);
+    result.transientImageViews.reserve(imageViewCount);
 
     result.imageHeaps.reserve(imageCount);
     result.bufferHeaps.reserve(bufferCount);
@@ -35,12 +37,20 @@ detail::GraphAllocator::allocate(GraphIR const &ir, ImageTrackingTable const &im
         return std::unexpected(rCode);
     }
 
+    rCode = append_with_created_image_views(m_device, ir.imageViewRequests, result.transientImages, result.transientImageViews);
+
+    if (rCode < vk::Result::eSuccess) {
+        deallocate(result);
+        return std::unexpected(rCode);
+    }
+
     return result;
 }
 
 void detail::GraphAllocator::deallocate(GraphResources &resources) {
     destroy_images(m_device, resources.transientImages);
     destroy_buffers(m_device, resources.transientBuffers);
+    destroy_image_views(m_device, resources.transientImageViews);
 
     destroy_heaps(m_allocator, resources.imageHeaps);
     destroy_heaps(m_allocator, resources.bufferHeaps);
