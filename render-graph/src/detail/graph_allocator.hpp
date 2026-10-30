@@ -239,16 +239,17 @@ void destroy_heaps(VmaAllocator const allocator, auto const &allocatedHeaps) noe
 }
 
 [[nodiscard]] std::expected<std::vector<vk::ImageView>, vk::Result>
-create_image_views(vk::Device const device, auto const &descriptionList, auto const &allocatedImageList) {
-    auto const viewCount = descriptionList.size();
+create_image_views(vk::Device const device, auto const &requestList, auto const &allocatedImageList) {
+    auto const viewCount = requestList.size();
 
     std::vector<vk::ImageView> result;
     result.reserve(viewCount);
 
     for (uint32_t viewIdx = 0; viewIdx < viewCount; ++viewIdx) {
-        auto const &[imageID, description] = descriptionList[viewIdx];
-        auto const &image = allocatedImageList[imageID.index];
+        auto const &request = requestList[viewIdx];
+        auto const &image = allocatedImageList[request.image.index];
 
+        auto const& description = request.description;
         vk::ImageViewCreateInfo const createInfo{description.flags,  project_handle(image), description.type,
                                                  description.format, description.mapping,   description.subresource};
 

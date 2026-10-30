@@ -126,7 +126,7 @@ ImageViewID PassDeclarator::request_image_view(ImageID const image, ImageViewDes
     assert(image.isTransient && "can't create transient image view for a persistent resource");
 
     auto const index = static_cast<uint32_t>(m_imageViewRequests->size());
-    m_imageViewRequests->emplace_back(image, description);
+    m_imageViewRequests->emplace_back(image, m_index, description);
 
     return ImageViewID{index};
 }

@@ -208,10 +208,16 @@ struct BufferVersion {
     std::vector<BufferTouch> readingList;
 };
 
+struct ImageViewRequest {
+    ImageID image;
+    uint32_t passIdx;
+    ImageViewDescription description;
+};
+
 using ImageVersionTable = std::unordered_map<ImageID, std::vector<ImageVersion>>;
 using BufferVersionTable = std::unordered_map<BufferID, std::vector<BufferVersion>>;
 
-using ImageViewRequestList = std::vector<std::pair<ImageID, ImageViewDescription>>;
+using ImageViewRequestList = std::vector<ImageViewRequest>;
 
 struct ImageBarrier {
     vk::PipelineStageFlags2 srcStages;
