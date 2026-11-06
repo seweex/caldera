@@ -5,11 +5,29 @@
 #include <caldera/structs.hpp>
 
 namespace {
-void dump(auto &list, auto const id, auto const &state) {
+template <class TagTy>
+[[nodiscard]] constexpr auto make_unknown_state() noexcept {
+    if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+        return caldera::ImageState{
+            .stages = vk::PipelineStageFlagBits2::eAllCommands,
+            .access = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+            .layout = vk::ImageLayout::eUndefined,
+            .familyIdx = vk::QueueFamilyIgnored
+        };
+    else
+        return caldera::BufferState{
+            .stages = vk::PipelineStageFlagBits2::eAllCommands,
+            .access = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+            .familyIdx = vk::QueueFamilyIgnored
+        };
+}
+
+template <class TagTy>
+void dump(auto &list, caldera::BasicResourceID<TagTy> const id, auto const &state) {
     assert(!id.isTransient && "can not dump for a transient resources");
 
     if (list.size() <= id.index)
-        list.reserve(id.index + 1);
+        list.resize(id.index + 1, make_unknown_state<TagTy>());
 
     list[id.index] = state;
 }
@@ -18,21 +36,8 @@ template <class TagTy>
 [[nodiscard]] auto get(auto const &list, caldera::BasicResourceID<TagTy> const id) {
     assert(!id.isTransient && "can not get for a transient resources");
 
-    if (list.size() <= id.index) {
-        if constexpr (std::same_as<TagTy, caldera::ImageTag>)
-            return caldera::ImageState{
-                .stages = vk::PipelineStageFlagBits2::eAllCommands,
-                .access = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
-                .layout = vk::ImageLayout::eUndefined,
-                .familyIdx = vk::QueueFamilyIgnored
-            };
-        else
-            return caldera::BufferState{
-                .stages = vk::PipelineStageFlagBits2::eAllCommands,
-                .access = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
-                .familyIdx = vk::QueueFamilyIgnored
-            };
-    }
+    if (list.size() <= id.index)
+        return make_unknown_state<TagTy>();
 
     return list[id.index];
 }

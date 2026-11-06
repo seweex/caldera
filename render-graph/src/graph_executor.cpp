@@ -20,18 +20,12 @@ namespace {
     if (barrier.srcFamilyIdx == vk::QueueFamilyIgnored && barrier.dstFamilyIdx != vk::QueueFamilyIgnored) {
         auto const lastState = stateManager.get_last_state(barrier.id);
 
-        if (lastState.familyIdx == vk::QueueFamilyIgnored)
-            return vk::ImageMemoryBarrier2{vk::PipelineStageFlagBits2::eAllCommands,
-                                           vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite,
-                                           barrier.dstStages,
-                                           barrier.dstAccess,
-                                           barrier.oldLayout,
-                                           barrier.newLayout,
-                                           vk::QueueFamilyIgnored,
-                                           vk::QueueFamilyIgnored,
-                                           handle,
+        if (lastState.familyIdx == vk::QueueFamilyIgnored || lastState.familyIdx == barrier.dstFamilyIdx)
+            return vk::ImageMemoryBarrier2{lastState.stages,        lastState.access,       barrier.dstStages,
+                                           barrier.dstAccess,       lastState.layout,       barrier.newLayout,
+                                           vk::QueueFamilyIgnored,  vk::QueueFamilyIgnored, handle,
                                            barrier.subresourceRange};
-        else if (lastState.familyIdx != barrier.dstFamilyIdx)
+        else
             return vk::ImageMemoryBarrier2{{},
                                            {},
                                            barrier.dstStages,
@@ -41,11 +35,6 @@ namespace {
                                            lastState.familyIdx,
                                            barrier.dstFamilyIdx,
                                            handle,
-                                           barrier.subresourceRange};
-        else
-            return vk::ImageMemoryBarrier2{lastState.stages,        lastState.access,       barrier.dstStages,
-                                           barrier.dstAccess,       lastState.layout,       barrier.newLayout,
-                                           vk::QueueFamilyIgnored,  vk::QueueFamilyIgnored, handle,
                                            barrier.subresourceRange};
     } else
         return vk::ImageMemoryBarrier2{barrier.srcStages,       barrier.srcAccess,    barrier.dstStages,
@@ -62,17 +51,11 @@ namespace {
     if (barrier.srcFamilyIdx == vk::QueueFamilyIgnored && barrier.dstFamilyIdx != vk::QueueFamilyIgnored) {
         auto const lastState = stateManager.get_last_state(barrier.id);
 
-        if (lastState.familyIdx == vk::QueueFamilyIgnored)
-            return vk::BufferMemoryBarrier2{vk::PipelineStageFlagBits2::eAllCommands,
-                                            vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite,
-                                            barrier.dstStages,
-                                            barrier.dstAccess,
-                                            vk::QueueFamilyIgnored,
-                                            vk::QueueFamilyIgnored,
-                                            handle,
-                                            barrier.offset,
-                                            barrier.size};
-        else if (lastState.familyIdx != barrier.dstFamilyIdx)
+        if (lastState.familyIdx == vk::QueueFamilyIgnored || lastState.familyIdx == barrier.dstFamilyIdx)
+            return vk::BufferMemoryBarrier2{
+                lastState.stages,       lastState.access, barrier.dstStages, barrier.dstAccess, vk::QueueFamilyIgnored,
+                vk::QueueFamilyIgnored, handle,           barrier.offset,    barrier.size};
+        else
             return vk::BufferMemoryBarrier2{{},
                                             {},
                                             barrier.dstStages,
@@ -82,10 +65,6 @@ namespace {
                                             handle,
                                             barrier.offset,
                                             barrier.size};
-        else
-            return vk::BufferMemoryBarrier2{
-                lastState.stages,       lastState.access, barrier.dstStages, barrier.dstAccess, vk::QueueFamilyIgnored,
-                vk::QueueFamilyIgnored, handle,           barrier.offset,    barrier.size};
     } else
         return vk::BufferMemoryBarrier2{barrier.srcStages,
                                         barrier.srcAccess,
