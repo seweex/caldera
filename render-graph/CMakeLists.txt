@@ -26,6 +26,15 @@ set_target_properties(caldera-render-graph PROPERTIES
     CXX_EXTENSIONS OFF
     COMPILE_WARNING_AS_ERROR ON)
 
+target_precompile_headers(caldera-render-graph PRIVATE
+    <vector>
+    <functional>
+    <string>
+    <ranges>
+    <expected>
+    <unordered_map>
+    <vulkan/vulkan.hpp>)
+
 if(MSVC)
     target_compile_options(caldera-render-graph PRIVATE /W4 /permissive-)
 else()
