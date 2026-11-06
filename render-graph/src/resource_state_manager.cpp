@@ -14,8 +14,26 @@ void dump(auto &list, auto const id, auto const &state) {
     list[id.index] = state;
 }
 
-[[nodiscard]] auto get(auto const &list, auto const id) {
+template <class TagTy>
+[[nodiscard]] auto get(auto const &list, caldera::BasicResourceID<TagTy> const id) {
     assert(!id.isTransient && "can not get for a transient resources");
+
+    if (list.size() <= id.index) {
+        if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+            return caldera::ImageState{
+                .stages = vk::PipelineStageFlagBits2::eAllCommands,
+                .access = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+                .layout = vk::ImageLayout::eUndefined,
+                .familyIdx = vk::QueueFamilyIgnored
+            };
+        else
+            return caldera::BufferState{
+                .stages = vk::PipelineStageFlagBits2::eAllCommands,
+                .access = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+                .familyIdx = vk::QueueFamilyIgnored
+            };
+    }
+
     return list[id.index];
 }
 } // namespace
