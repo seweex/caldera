@@ -28,6 +28,9 @@ inline void sort_readings(auto const &writing, auto &readings, FamilyNumbers con
             remaining.push_back(key);
         }
 
+    if (remaining.size() == 0)
+        return;
+
     auto state = (writing.passIdx != UINT32_MAX) ? group_key(writing, families) : remaining.front();
 
     std::vector<decltype(group_key(writing, families))> order;
@@ -248,7 +251,7 @@ template <class TableTy> [[nodiscard]] inline TableTy make_tracking_table(auto c
     TouchTranslator translator;
 
     for (auto const &[resourceID, versionList] : versionTable) {
-        auto &tracked = table[{}];
+        auto &tracked = table[resourceID];
 
         auto const versionCount = static_cast<uint32_t>(versionList.size());
         bool firstTouchProcessed = false;
@@ -283,7 +286,7 @@ template <class TableTy> [[nodiscard]] inline TableTy make_tracking_table(auto c
                 tracked.usages |= translator.translate_to_usage_flags(reading);
 
                 if constexpr (requires { tracked.aspect; })
-                    tracked.aspect |= translator.translate_to_aspect_mask(version.writing);
+                    tracked.aspect |= translator.translate_to_aspect_mask(reading);
             }
         }
     }
@@ -344,14 +347,11 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
     passPreBarriers.resize(passCount);
     passPostBarriers.resize(passCount);
 
-    uint32_t totalPreBarrierCount = 0;
-    uint32_t totalPostBarrierCount = 0;
-
     for (auto const &[resourceID, versionList] : versionTable) {
         auto const &trackedInfo = trackingTable.at(resourceID);
 
         auto srcTouch = undefined_touch;
-        bool initVersion = true;
+        bool isFirstTouch = true;
 
         if (resourceID.isTransient) {
             auto const &firstTouch = trackingTable.at(resourceID).firstTouch;
@@ -365,9 +365,24 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
                     srcTouch.access = lastTouch.access;
                 }
             }
+        } else if (trackedInfo.firstTouch.passIdx != UINT32_MAX) {
+            passPreBarriers[trackedInfo.firstTouch.passIdx].emplace_back(
+                make_initial_barrier(resourceID, families, trackedInfo));
         }
 
         auto const processTransition = [&](auto const &dstTouch) {
+            if (dstTouch.passIdx == UINT32_MAX)
+                return;
+
+            if (isFirstTouch) {
+                isFirstTouch = false;
+
+                if (!resourceID.isTransient) {
+                    srcTouch = dstTouch;
+                    return;
+                }
+            }
+
             switch (resolver.has_hazards(families, srcTouch, dstTouch)) {
             case HazardType::none: {
                 srcTouch.passIdx = dstTouch.passIdx;
@@ -379,8 +394,6 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
                 auto const barrier = resolver.resolve_access_hazard(resourceID, srcTouch, dstTouch, trackedInfo);
 
                 passPreBarriers[dstTouch.passIdx].emplace_back(barrier);
-                ++totalPreBarrierCount;
-
                 srcTouch = dstTouch;
                 break;
             }
@@ -391,9 +404,6 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
                 passPostBarriers[srcTouch.passIdx].emplace_back(rlsBarrier);
                 passPreBarriers[dstTouch.passIdx].emplace_back(acqBarrier);
 
-                ++totalPreBarrierCount;
-                ++totalPostBarrierCount;
-
                 srcTouch = dstTouch;
                 break;
             }
@@ -403,20 +413,21 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
         };
 
         for (auto const &version : versionList) {
-            if (!initVersion)
-                processTransition(version.writing);
+            processTransition(version.writing);
 
             for (auto const &reading : version.readingList)
                 processTransition(reading);
-
-            initVersion = false;
         }
     }
 
     auto &targetBarrierList = graph.*barrierGroupPtr;
     assert(targetBarrierList.empty());
 
-    targetBarrierList.reserve(totalPreBarrierCount + totalPostBarrierCount);
+    size_t totalBarriers = 0;
+    for (auto const passIdx : passOrder)
+        totalBarriers += passPreBarriers[passIdx].size() + passPostBarriers[passIdx].size();
+
+    targetBarrierList.reserve(totalBarriers);
 
     auto const pushBarriers = [&](auto const &srcList) {
         auto const count = srcList.size();
@@ -427,11 +438,6 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
         targetBarrierList.insert(targetBarrierList.end(), srcList.begin(), srcList.end());
         return std::make_pair(offset, count);
     };
-
-    for (auto const &[resourceID, trackedInfo] : trackingTable)
-        if (!resourceID.isTransient)
-            passPreBarriers[trackedInfo.firstTouch.passIdx].emplace_back(
-                make_initial_barrier(resourceID, families, trackedInfo));
 
     for (auto const passIdx : passOrder) {
         auto &compiled = graph.compiledPasses[passIdx];
@@ -514,7 +520,7 @@ inline void append_with_allowed_image_views(CompiledGraph &graph, auto const &im
 
         graph.allowedImageViews.insert(graph.allowedImageViews.end(), allowedViews.begin(), allowedViews.end());
         compiled.allowedImageViewOffset = offset;
-        compiled.allowedBufferSize = count;
+        compiled.allowedImageViewSize = count;
     }
 }
 
