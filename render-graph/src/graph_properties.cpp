@@ -7,7 +7,9 @@
 
 namespace caldera {
 
-GraphProperties::GraphProperties(RenderGraph const &graph) : m_graph(graph) {}
+GraphProperties::GraphProperties(RenderGraph const &graph) : m_graph(graph) {
+    assert(graph && "graph must not be empty");
+}
 
 uint32_t GraphProperties::get_pass_count() const noexcept {
     return static_cast<uint32_t>(m_graph.m_compiled.compiledPasses.size());

@@ -149,6 +149,7 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
 namespace caldera {
 std::expected<SubmittableGraph, vk::Result>
 GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context, ExecutionMemory &memory) {
+    assert(graph && "graph must not be empty");
     context.resourceMap->bind_resources(graph.m_resources);
 
     ::prepare_execution_memory(memory, graph.m_compiled);
