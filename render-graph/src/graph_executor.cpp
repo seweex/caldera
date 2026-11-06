@@ -7,6 +7,10 @@
 #include <expected>
 #include <vulkan/vulkan.hpp>
 
+#ifndef NDEBUG
+#include <iostream>
+#endif
+
 namespace {
 [[nodiscard]] vk::ImageMemoryBarrier2 translate_one_barrier(caldera::detail::ImageBarrier const &barrier,
                                                             caldera::ResourceMap const &resourceMap,
@@ -78,6 +82,20 @@ namespace {
                                         barrier.offset,
                                         barrier.size};
 }
+
+[[nodiscard]] caldera::ImageState translate_to_state(caldera::detail::ImageTouch const &touch,
+                                                     caldera::FamilyNumbers const &families) noexcept {
+    return caldera::ImageState{.stages = touch.stages,
+                               .access = touch.access,
+                               .layout = touch.layout,
+                               .familyIdx = families.get(touch.family)};
+}
+
+[[nodiscard]] caldera::BufferState translate_to_state(caldera::detail::BufferTouch const &touch,
+                                                      caldera::FamilyNumbers const &families) noexcept {
+    return caldera::BufferState{
+        .stages = touch.stages, .access = touch.access, .familyIdx = families.get(touch.family)};
+}
 } // namespace
 
 namespace {
@@ -145,6 +163,63 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
 
     return vk::Result::eSuccess;
 }
+
+template <typename TagTy>
+void dump_resource_states(caldera::ResourceStateManager &manager, caldera::detail::CompiledGraph const &graph,
+                          caldera::FamilyNumbers const &families) {
+    auto const &trackedResources = std::invoke([&]() -> auto const & {
+        if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+            return graph.trackedImages;
+        else
+            return graph.trackedBuffers;
+    });
+
+    for (auto const &[resourceID, state] : trackedResources)
+        if (resourceID.isTransient) {
+            manager.dump(resourceID, ::translate_to_state(state.lastTouch, families));
+        }
+}
+#ifndef NDEBUG
+template <class TagTy> void print_barrier_group(auto const &group) {
+    for (auto const &barrier : group) {
+        if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+            std::cout << "Barrier of IMAGE #" << barrier.image << "\n";
+        else
+            std::cout << "Barrier of BUFFER #" << barrier.buffer << "\n";
+
+        std::cout << "  Access: " << vk::to_string(barrier.srcAccessMask) << " ==> "
+                  << vk::to_string(barrier.dstAccessMask) << "\n";
+        std::cout << "  Stages: " << vk::to_string(barrier.srcStageMask) << " ==> "
+                  << vk::to_string(barrier.dstStageMask) << "\n";
+
+        if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+            std::cout << "  Layout: " << vk::to_string(barrier.oldLayout) << " ==> " << vk::to_string(barrier.newLayout)
+                      << "\n";
+
+        std::cout << "  Family: " << barrier.srcQueueFamilyIndex << " ==> " << barrier.dstQueueFamilyIndex << "\n";
+    }
+}
+
+void print_all_barriers(caldera::ExecutionMemory const &memory, caldera::detail::CompiledGraph const &graph) {
+    for (uint32_t passIdx = 0; passIdx < graph.compiledPasses.size(); ++passIdx) {
+        auto const &pass = graph.compiledPasses[passIdx];
+
+        std::cout << "\n=== In Pass #" << passIdx << " ===\n";
+        std::cout << "=- Pre-barriers -=\n";
+
+        ::print_barrier_group<caldera::ImageTag>(
+            std::span{memory.imageBarriers.data() + pass.imagePreBarrierOffset, pass.imagePreBarrierSize});
+        ::print_barrier_group<caldera::BufferTag>(
+            std::span{memory.bufferBarriers.data() + pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize});
+
+        std::cout << "=- Post-barriers -=\n";
+        ::print_barrier_group<caldera::ImageTag>(
+            std::span{memory.imageBarriers.data() + pass.imagePostBarrierOffset, pass.imagePostBarrierSize});
+        ::print_barrier_group<caldera::BufferTag>(
+            std::span{memory.bufferBarriers.data() + pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize});
+    }
+}
+#endif
 } // namespace
 
 namespace caldera {
@@ -157,6 +232,10 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
 
     ::translate_compiled_barriers(memory, graph.m_compiled, *context.resourceMap, *context.stateManager);
     ::copy_pass_dependencies(memory, graph.m_compiled);
+
+#ifndef NDEBUG
+    ::print_all_barriers(memory, graph.m_compiled);
+#endif
 
     SubmittableGraph result;
 
@@ -178,6 +257,9 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
             pass.familyIdx, cmd,
             std::span{memory.passDependencies.data() + pass.passDependencyOffset, pass.passDependencySize});
     }
+
+    ::dump_resource_states<ImageTag>(*context.stateManager, graph.m_compiled, graph.m_families);
+    ::dump_resource_states<BufferTag>(*context.stateManager, graph.m_compiled, graph.m_families);
 
     result.passes = std::span{memory.submittablePasses};
     return result;
