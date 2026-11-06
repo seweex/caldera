@@ -286,7 +286,7 @@ template <class TableTy> [[nodiscard]] inline TableTy make_tracking_table(auto c
                 tracked.usages |= translator.translate_to_usage_flags(reading);
 
                 if constexpr (requires { tracked.aspect; })
-                    tracked.aspect |= translator.translate_to_aspect_mask(version.writing);
+                    tracked.aspect |= translator.translate_to_aspect_mask(reading);
             }
         }
     }
@@ -517,7 +517,7 @@ inline void append_with_allowed_image_views(CompiledGraph &graph, auto const &im
 
         graph.allowedImageViews.insert(graph.allowedImageViews.end(), allowedViews.begin(), allowedViews.end());
         compiled.allowedImageViewOffset = offset;
-        compiled.allowedBufferSize = count;
+        compiled.allowedImageViewSize = count;
     }
 }
 
