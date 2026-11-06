@@ -27,6 +27,15 @@ class ResourceMap {
     [[nodiscard]] BufferID map(vk::Buffer buffer);
 
     /**
+     * @brief Maps new image view handle to a new image view ID
+     *
+     * @param image Image ID for which the image view was created
+     * @param view Image view handle for mapping or VK_NULL_HANDLE
+     * @return ID of the newly mapped image view
+     */
+    [[nodiscard]] ImageViewID map(ImageID image, vk::ImageView view);
+
+    /**
      * @brief Maps an image handle to an existing image ID
      *
      * @param id Existing image ID for mapping to
@@ -41,6 +50,19 @@ class ResourceMap {
      * @param buffer Buffer handle for mapping or VK_NULL_HANDLE
      */
     void map(BufferID id, vk::Buffer buffer);
+
+    /**
+     * @brief Maps an image view handle to an existing image view ID
+     *
+     * @param id Existing image view ID for mapping to
+     * @param view Image view handle for mapping or VK_NULL_HANDLE
+     *
+     * @warning The image view handle must be created for a persistent image
+     *
+     * @warning During executing the graph, make sure you have created each image view
+     * for the same images that are mapped for respective IDs
+     */
+    void map(ImageViewID id, vk::ImageView view);
 
     /**
      * @brief Gets the image handle mapped to an image ID
@@ -70,8 +92,8 @@ class ResourceMap {
      * @param id Image view ID to get handle mapped to
      * @return Image view handle mapped to the specified ID or VK_NULL_HANDLE
      *
-     * @note During an execution, you can access only to the views
-     * the pass requested. Access to unallowed views occurs to assert failure
+     * @note During an execution, you can access only to the views that refer to the images
+     * the pass reads or writes. Access to unallowed views occurs to assert failure
      */
     [[nodiscard]] vk::ImageView at(ImageViewID id) const;
 
@@ -85,6 +107,7 @@ class ResourceMap {
 
     std::vector<vk::Image> m_persistentImages;
     std::vector<vk::Buffer> m_persistentBuffers;
+    std::vector<std::pair<ImageID, vk::ImageView>> m_persistentImageViews;
 
     std::span<ImageID const> m_allowedImages;
     std::span<BufferID const> m_allowedBuffers;

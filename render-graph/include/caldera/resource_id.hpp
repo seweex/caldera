@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <functional>
 
+#include <caldera/fwd.hpp>
+
 namespace caldera {
 /// @brief Tag for image-related thing
 struct ImageTag {};
@@ -49,6 +51,7 @@ static_assert(sizeof(uint64_t) == sizeof(BasicResourceVersion<BufferTag>));
 /// @brief Lightweight struct for identifying requested image views
 struct ImageViewID
 {
+    ImageID image;
     uint32_t index;
 
     [[nodiscard]] constexpr auto operator<=>(ImageViewID const &) const noexcept = default;
@@ -73,7 +76,6 @@ template <class TagTy> struct hash<caldera::BasicResourceVersion<TagTy>> {
 
     [[nodiscard]] size_t operator()(Version const version) const noexcept {
         auto const idHash = hash<ID>()(version.id);
-
         return idHash ^ (std::hash<uint32_t>()(version.versionIdx) + 0x9e3779b9 + (idHash << 6) + (idHash >> 2));
     }
 };
@@ -81,7 +83,8 @@ template <class TagTy> struct hash<caldera::BasicResourceVersion<TagTy>> {
 template <>
 struct hash<caldera::ImageViewID> {
     [[nodiscard]] size_t operator()(caldera::ImageViewID const id) const noexcept {
-        return hash<uint32_t>()(id.index);
+        auto const imageHash = hash<caldera::ImageID>()(id.image);
+        return imageHash ^ (hash<uint32_t>()(id.index) + 0x9e3779b9 + (imageHash << 6) + (imageHash >> 2));
     }
 };
 } // namespace std
