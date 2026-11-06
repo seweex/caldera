@@ -251,7 +251,7 @@ template <class TableTy> [[nodiscard]] inline TableTy make_tracking_table(auto c
     TouchTranslator translator;
 
     for (auto const &[resourceID, versionList] : versionTable) {
-        auto &tracked = table[{}];
+        auto &tracked = table[resourceID];
 
         auto const versionCount = static_cast<uint32_t>(versionList.size());
         bool firstTouchProcessed = false;
