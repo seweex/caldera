@@ -28,6 +28,9 @@ inline void sort_readings(auto const &writing, auto &readings, FamilyNumbers con
             remaining.push_back(key);
         }
 
+    if (remaining.size() == 0)
+        return;
+
     auto state = (writing.passIdx != UINT32_MAX) ? group_key(writing, families) : remaining.front();
 
     std::vector<decltype(group_key(writing, families))> order;
