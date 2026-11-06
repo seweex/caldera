@@ -18,6 +18,9 @@ class RenderGraph {
                          detail::CompiledGraph &&compiled, detail::GraphResources &&resources) noexcept;
 
   public:
+    /// @brief Creates empty render graph
+    RenderGraph() noexcept;
+
     /**
      * @brief Compiles and allocated a render graph according to specified
      * graph intermediate representation
@@ -40,6 +43,21 @@ class RenderGraph {
 
     RenderGraph(RenderGraph const &) = delete;
     RenderGraph &operator=(RenderGraph const &) = delete;
+
+    /// @brief Frees all graph resources
+    void reset() noexcept;
+
+    /// @brief Checks whether a graph is empty
+    [[nodiscard]] explicit operator bool() const noexcept;
+
+    /// @brief Checks whether a graph is not empty
+    [[nodiscard]] bool operator!() const noexcept;
+
+    /// @brief Checks whether a graph is empty
+    [[nodiscard]] bool operator==(std::nullptr_t) const noexcept;
+
+    /// @brief Checks whether a graph is not empty
+    [[nodiscard]] bool operator!=(std::nullptr_t) const noexcept;
 
   private:
     FamilyNumbers m_families;
