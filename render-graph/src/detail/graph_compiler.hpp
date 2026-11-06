@@ -419,7 +419,7 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
     auto &targetBarrierList = graph.*barrierGroupPtr;
     assert(targetBarrierList.empty());
 
-    targetBarrierList.reserve(totalPreBarrierCount + totalPostBarrierCount);
+    targetBarrierList.reserve(totalPreBarrierCount + totalPostBarrierCount + trackingTable.size());
 
     auto const pushBarriers = [&](auto const &srcList) {
         auto const count = srcList.size();
