@@ -499,7 +499,7 @@ inline void append_with_allowed_image_views(CompiledGraph &graph, auto const &im
 
     for (uint32_t viewIdx = 0; viewIdx < viewCount; ++viewIdx) {
         auto const &request = imageViewRequestList[viewIdx];
-        passAllowedViews[request.passIdx].emplace_back(ImageViewID{.index = viewIdx});
+        passAllowedViews[request.passIdx].emplace_back(ImageViewID{.image = request.image, .index = viewIdx});
     }
 
     assert(graph.allowedImageViews.empty());
