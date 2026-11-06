@@ -175,7 +175,7 @@ void dump_resource_states(caldera::ResourceStateManager &manager, caldera::detai
     });
 
     for (auto const &[resourceID, state] : trackedResources)
-        if (resourceID.isTransient) {
+        if (!resourceID.isTransient) {
             manager.dump(resourceID, ::translate_to_state(state.lastTouch, families));
         }
 }
