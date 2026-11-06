@@ -12,12 +12,22 @@ namespace {
     assert(std::ranges::is_sorted(filter));
 
     if (!filter.empty())
-        assert(std::ranges::binary_search(filter, id) && "unallowed resource was requested");
+        assert(std::ranges::binary_search(filter, id) && "unallowed resource or view was requested");
 
     if (id.isTransient)
         return transientResources[id.index].handle;
     else
         return persistentResources[id.index];
+}
+
+[[nodiscard]] auto get(auto const id, auto const &transientResources,
+                       auto const &filter) {
+    assert(std::ranges::is_sorted(filter));
+
+    if (!filter.empty())
+        assert(std::ranges::binary_search(filter, id) && "unallowed resource or view was requested");
+
+    return transientResources[id.index].handle;
 }
 
 auto map(auto &list, auto const id, auto const handle) {
@@ -58,13 +68,18 @@ vk::Buffer ResourceMap::at(BufferID const id) const {
     return ::get(id, m_persistentBuffers, m_transientResources->transientBuffers, m_allowedBuffers);
 }
 
+vk::ImageView ResourceMap::at(ImageViewID const id) const {
+    return ::get(id, m_transientResources->transientImageViews, m_allowedImageViews);
+}
+
 void ResourceMap::bind_resources(detail::GraphResources const &resources) noexcept {
     m_transientResources = &resources;
 }
 
-void ResourceMap::bind_resource_filters(std::span<ImageID const> const images,
-                                        std::span<BufferID const> const buffers) noexcept {
+void ResourceMap::bind_resource_filters(std::span<ImageID const> const images, std::span<BufferID const> const buffers,
+                                        std::span<ImageViewID const> const imageViews) noexcept {
     m_allowedImages = images;
     m_allowedBuffers = buffers;
+    m_allowedImageViews = imageViews;
 }
 } // namespace caldera

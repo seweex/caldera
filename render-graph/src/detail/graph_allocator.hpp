@@ -149,6 +149,11 @@ void destroy_buffers(vk::Device const device, auto const &allocatedBuffers) noex
         device.destroyBuffer(project_handle(allocated));
 }
 
+void destroy_image_views(vk::Device const device, auto const &createdImageViews) noexcept {
+    for (auto const &created : createdImageViews)
+        device.destroyImageView(project_handle(created));
+}
+
 void destroy_heaps(VmaAllocator const allocator, auto const &allocatedHeaps) noexcept {
     for (auto const &allocated : allocatedHeaps)
         vmaFreeMemory(allocator, project_handle(allocated));
@@ -228,6 +233,34 @@ void destroy_heaps(VmaAllocator const allocator, auto const &allocatedHeaps) noe
         }
 
         result.emplace_back(buffer);
+    }
+
+    return result;
+}
+
+[[nodiscard]] std::expected<std::vector<vk::ImageView>, vk::Result>
+create_image_views(vk::Device const device, auto const &requestList, auto const &allocatedImageList) {
+    auto const viewCount = requestList.size();
+
+    std::vector<vk::ImageView> result;
+    result.reserve(viewCount);
+
+    for (uint32_t viewIdx = 0; viewIdx < viewCount; ++viewIdx) {
+        auto const &request = requestList[viewIdx];
+        auto const &image = allocatedImageList[request.image.index];
+
+        auto const& description = request.description;
+        vk::ImageViewCreateInfo const createInfo{description.flags,  project_handle(image), description.type,
+                                                 description.format, description.mapping,   description.subresource};
+
+        vk::ImageView view;
+
+        if (auto const rCode = device.createImageView(&createInfo, nullptr, &view); rCode < vk::Result::eSuccess) {
+            destroy_image_views(device, result);
+            return std::unexpected(rCode);
+        }
+
+        result.emplace_back(view);
     }
 
     return result;
@@ -369,6 +402,22 @@ template <class TagTy>
 
     append_with_translated_resources(allocator, targetResourceList, targetHeapList, *allocatedResources,
                                      *allocatedHeaps, allocationDescriptions);
+
+    return vk::Result::eSuccess;
+}
+
+[[nodiscard]] vk::Result append_with_created_image_views(vk::Device const device, auto const &descriptionList,
+                                                         auto const &allocatedImages, auto &targetViewList) {
+    auto const allocatedResources = create_image_views(device, descriptionList, allocatedImages);
+
+    if (!allocatedResources)
+        return allocatedResources.error();
+
+    auto const viewCount = allocatedResources->size();
+    assert(targetViewList.capacity() >= viewCount);
+
+    for (auto const handle : *allocatedResources)
+        targetViewList.emplace_back(handle);
 
     return vk::Result::eSuccess;
 }

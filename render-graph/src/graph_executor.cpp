@@ -149,6 +149,8 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
 namespace caldera {
 std::expected<SubmittableGraph, vk::Result>
 GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context, ExecutionMemory &memory) {
+    context.resourceMap->bind_resources(graph.m_resources);
+
     ::prepare_execution_memory(memory, graph.m_compiled);
 
     ::translate_compiled_barriers(memory, graph.m_compiled, *context.resourceMap, *context.stateManager);
@@ -157,6 +159,13 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
     SubmittableGraph result;
 
     for (auto const &pass : graph.m_compiled.compiledPasses) {
+
+        context.resourceMap->bind_resource_filters(
+            std::span{graph.m_compiled.allowedImages.begin() + pass.allowedImageOffset, pass.allowedImageSize},
+            std::span{graph.m_compiled.allowedBuffers.begin() + pass.allowedBufferOffset, pass.allowedBufferSize},
+            std::span{graph.m_compiled.allowedImageViews.begin() + pass.allowedImageViewOffset,
+                      pass.allowedImageViewSize});
+
         auto const cmd = context.distributor->take_buffer(pass.familyIdx);
 
         if (auto const rCode = ::process_cmd(cmd, memory, *context.resourceMap, pass); rCode < vk::Result::eSuccess) {
@@ -168,7 +177,7 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
             std::span{memory.passDependencies.data() + pass.passDependencyOffset, pass.passDependencySize});
     }
 
-    result.passes = memory.submittablePasses;
+    result.passes = std::span{memory.submittablePasses};
     return result;
 }
 } // namespace caldera

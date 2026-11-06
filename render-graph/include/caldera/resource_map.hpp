@@ -64,10 +64,22 @@ class ResourceMap {
      */
     [[nodiscard]] vk::Buffer at(BufferID id) const;
 
+    /**
+     * @brief Gets the image view handle mapped to an image view ID
+     *
+     * @param id Image view ID to get handle mapped to
+     * @return Image view handle mapped to the specified ID or VK_NULL_HANDLE
+     *
+     * @note During an execution, you can access only to the views
+     * the pass requested. Access to unallowed views occurs to assert failure
+     */
+    [[nodiscard]] vk::ImageView at(ImageViewID id) const;
+
   private:
     void bind_resources(detail::GraphResources const &resources) noexcept;
 
-    void bind_resource_filters(std::span<ImageID const> images, std::span<BufferID const> buffers) noexcept;
+    void bind_resource_filters(std::span<ImageID const> images, std::span<BufferID const> buffers,
+                               std::span<ImageViewID const> imageViews) noexcept;
 
     friend class GraphExecutor;
 
@@ -76,6 +88,7 @@ class ResourceMap {
 
     std::span<ImageID const> m_allowedImages;
     std::span<BufferID const> m_allowedBuffers;
+    std::span<ImageViewID const> m_allowedImageViews;
 
     detail::GraphResources const *m_transientResources = nullptr;
 };

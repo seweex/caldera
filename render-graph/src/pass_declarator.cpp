@@ -84,8 +84,10 @@ push_read_write(auto &versionList, uint32_t const passIdx, caldera::FamilyType c
 
 namespace caldera {
 PassDeclarator::PassDeclarator(std::string_view const name, FamilyType const family, uint32_t const index,
-                               detail::ImageVersionTable &imageTable, detail::BufferVersionTable &bufferTable)
-    : m_name(name), m_type(family), m_index(index), m_imageTable(&imageTable), m_bufferTable(&bufferTable) {}
+                               detail::ImageVersionTable &imageTable, detail::BufferVersionTable &bufferTable,
+                               detail::ImageViewRequestList &requestList)
+    : m_name(name), m_type(family), m_index(index), m_imageTable(&imageTable), m_bufferTable(&bufferTable),
+      m_imageViewRequests(&requestList) {}
 
 detail::PassDeclaration
 PassDeclarator::extract(std::function<void(vk::CommandBuffer, ResourceMap const &)> &&callback) && noexcept {
@@ -118,5 +120,14 @@ ImageVersion PassDeclarator::read_write(ImageVersion const resource, ImageUsage 
 
 BufferVersion PassDeclarator::read_write(BufferVersion const resource, BufferUsage const usage) {
     return ::push_read_write((*m_bufferTable)[resource.id], m_index, m_type, resource, usage);
+}
+
+ImageViewID PassDeclarator::request_image_view(ImageID const image, ImageViewDescription const &description) {
+    assert(image.isTransient && "can't create transient image view for a persistent resource");
+
+    auto const index = static_cast<uint32_t>(m_imageViewRequests->size());
+    m_imageViewRequests->emplace_back(image, m_index, description);
+
+    return ImageViewID{index};
 }
 } // namespace caldera

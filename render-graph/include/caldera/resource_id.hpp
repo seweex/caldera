@@ -45,6 +45,14 @@ template <class TagTy> struct BasicResourceVersion {
 
 static_assert(sizeof(uint64_t) == sizeof(BasicResourceVersion<ImageTag>));
 static_assert(sizeof(uint64_t) == sizeof(BasicResourceVersion<BufferTag>));
+
+/// @brief Lightweight struct for identifying requested image views
+struct ImageViewID
+{
+    uint32_t index;
+
+    [[nodiscard]] constexpr auto operator<=>(ImageViewID const &) const noexcept = default;
+};
 } // namespace caldera
 
 namespace std {
@@ -67,6 +75,13 @@ template <class TagTy> struct hash<caldera::BasicResourceVersion<TagTy>> {
         auto const idHash = hash<ID>()(version.id);
 
         return idHash ^ (std::hash<uint32_t>()(version.versionIdx) + 0x9e3779b9 + (idHash << 6) + (idHash >> 2));
+    }
+};
+
+template <>
+struct hash<caldera::ImageViewID> {
+    [[nodiscard]] size_t operator()(caldera::ImageViewID const id) const noexcept {
+        return hash<uint32_t>()(id.index);
     }
 };
 } // namespace std

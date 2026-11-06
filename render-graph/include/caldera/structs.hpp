@@ -130,6 +130,16 @@ struct BufferDescription {
     vk::DeviceSize size;
 };
 
+/// @brief Description of an image view
+struct ImageViewDescription {
+    vk::ImageViewCreateFlags flags;
+    vk::ImageViewType type;
+    vk::Format format;
+
+    vk::ComponentMapping mapping;
+    vk::ImageSubresourceRange subresource;
+};
+
 /// @brief Description of pass dependency
 struct PassDependency {
     /**
@@ -198,8 +208,16 @@ struct BufferVersion {
     std::vector<BufferTouch> readingList;
 };
 
+struct ImageViewRequest {
+    ImageID image;
+    uint32_t passIdx;
+    ImageViewDescription description;
+};
+
 using ImageVersionTable = std::unordered_map<ImageID, std::vector<ImageVersion>>;
 using BufferVersionTable = std::unordered_map<BufferID, std::vector<BufferVersion>>;
+
+using ImageViewRequestList = std::vector<ImageViewRequest>;
 
 struct ImageBarrier {
     vk::PipelineStageFlags2 srcStages;
@@ -282,11 +300,17 @@ struct GraphResources {
         void *mapped;
     };
 
+    struct CreatedImageView {
+        vk::ImageView handle;
+    };
+
     std::vector<AllocatedImage> transientImages;
     std::vector<AllocatedBuffer> transientBuffers;
 
     std::vector<AllocatedHeap> imageHeaps;
     std::vector<AllocatedHeap> bufferHeaps;
+
+    std::vector<CreatedImageView> transientImageViews;
 };
 
 struct CompiledPass {
@@ -313,6 +337,9 @@ struct CompiledPass {
     uint32_t allowedBufferOffset;
     uint32_t allowedBufferSize;
 
+    uint32_t allowedImageViewOffset;
+    uint32_t allowedImageViewSize;
+
     uint32_t passDependencyOffset;
     uint32_t passDependencySize;
 };
@@ -323,6 +350,7 @@ struct CompiledGraph {
 
     std::vector<ImageID> allowedImages;
     std::vector<BufferID> allowedBuffers;
+    std::vector<ImageViewID> allowedImageViews;
 
     std::vector<PassDependency> passDependencies;
 
@@ -338,6 +366,7 @@ namespace caldera {
 struct GraphIR {
     std::vector<ImageDescription> transientImages;
     std::vector<BufferDescription> transientBuffers;
+    detail::ImageViewRequestList imageViewRequests;
 
     std::vector<detail::PassDeclaration> passes;
 

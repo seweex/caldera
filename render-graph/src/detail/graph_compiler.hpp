@@ -489,6 +489,35 @@ inline void append_with_allowed_resources(CompiledGraph &graph, auto const resou
     }
 }
 
+inline void append_with_allowed_image_views(CompiledGraph &graph, auto const &imageViewRequestList,
+                                            auto const &passOrder) {
+    auto const passCount = passOrder.size();
+    auto const viewCount = imageViewRequestList.size();
+
+    std::vector<std::vector<ImageViewID>> passAllowedViews;
+    passAllowedViews.resize(passCount);
+
+    for (uint32_t viewIdx = 0; viewIdx < viewCount; ++viewIdx) {
+        auto const &request = imageViewRequestList[viewIdx];
+        passAllowedViews[request.passIdx].emplace_back(ImageViewID{.index = viewIdx});
+    }
+
+    assert(graph.allowedImageViews.empty());
+    graph.allowedImageViews.reserve(viewCount);
+
+    for (auto const passIdx : passOrder) {
+        auto &compiled = graph.compiledPasses[passIdx];
+        auto &allowedViews = passAllowedViews[passIdx];
+
+        auto const count = allowedViews.size();
+        auto const offset = graph.allowedImageViews.size();
+
+        graph.allowedImageViews.insert(graph.allowedImageViews.end(), allowedViews.begin(), allowedViews.end());
+        compiled.allowedImageViewOffset = offset;
+        compiled.allowedBufferSize = count;
+    }
+}
+
 /* * * * */
 
 inline void append_with_pass_dependencies(CompiledGraph &graph, GraphAdjacencyList const &adjacency,
@@ -560,6 +589,7 @@ inline void append_with_pass_dependencies(CompiledGraph &graph, GraphAdjacencyLi
     append_with_allowed_resources<BufferTag>(result, &CompiledGraph::allowedBuffers, &CompiledPass::allowedBufferOffset,
                                              &CompiledPass::allowedBufferSize, ir.bufferVersions, passOrder);
 
+    append_with_allowed_image_views(result, ir.imageViewRequests, passOrder);
     append_with_pass_dependencies(result, adjacency, passOrder);
 
     auto passes = std::move(result.compiledPasses);
