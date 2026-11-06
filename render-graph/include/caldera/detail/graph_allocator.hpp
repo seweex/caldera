@@ -17,6 +17,9 @@ class GraphAllocator {
 
     void deallocate(GraphResources &resources);
 
+    [[nodiscard]] bool is_valid() const noexcept;
+    void reset() noexcept;
+
   private:
     vk::Device m_device;
     VmaAllocator m_allocator;

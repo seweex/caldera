@@ -57,4 +57,13 @@ void detail::GraphAllocator::deallocate(GraphResources &resources) {
 
     resources = {};
 }
+
+bool detail::GraphAllocator::is_valid() const noexcept {
+    assert((m_allocator != nullptr) == (m_device != nullptr));
+    return m_allocator != nullptr && m_device != nullptr;
+}
+void detail::GraphAllocator::reset() noexcept {
+    m_device = nullptr;
+    m_allocator = nullptr;
+}
 } // namespace caldera
