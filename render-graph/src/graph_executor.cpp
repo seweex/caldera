@@ -128,7 +128,8 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
         cmd.pipelineBarrier2(dependencyInfo);
     };
 
-    if (auto const rCode = cmd.begin({}); rCode < vk::Result::eSuccess)
+    if (auto const rCode = cmd.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+        rCode < vk::Result::eSuccess)
         return rCode;
 
     applyBarriers(memory.imageBarriers, memory.bufferBarriers, pass.imagePreBarrierOffset, pass.imagePreBarrierSize,
