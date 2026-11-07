@@ -13,68 +13,28 @@
 
 namespace {
 [[nodiscard]] vk::ImageMemoryBarrier2 translate_one_barrier(caldera::detail::ImageBarrier const &barrier,
-                                                            caldera::ResourceMap const &resourceMap,
-                                                            caldera::ResourceStateManager const &stateManager) {
+                                                            caldera::ResourceMap const &resourceMap) {
     auto const handle = resourceMap.at(barrier.id);
 
-    if (barrier.srcFamilyIdx == vk::QueueFamilyIgnored && barrier.dstFamilyIdx != vk::QueueFamilyIgnored) {
-        auto const lastState = stateManager.get_last_state(barrier.id);
-
-        if (lastState.familyIdx == vk::QueueFamilyIgnored || lastState.familyIdx == barrier.dstFamilyIdx)
-            return vk::ImageMemoryBarrier2{lastState.stages,        lastState.access,       barrier.dstStages,
-                                           barrier.dstAccess,       lastState.layout,       barrier.newLayout,
-                                           vk::QueueFamilyIgnored,  vk::QueueFamilyIgnored, handle,
-                                           barrier.subresourceRange};
-        else
-            return vk::ImageMemoryBarrier2{{},
-                                           {},
-                                           barrier.dstStages,
-                                           barrier.dstAccess,
-                                           lastState.layout,
-                                           barrier.newLayout,
-                                           lastState.familyIdx,
-                                           barrier.dstFamilyIdx,
-                                           handle,
-                                           barrier.subresourceRange};
-    } else
-        return vk::ImageMemoryBarrier2{barrier.srcStages,       barrier.srcAccess,    barrier.dstStages,
-                                       barrier.dstAccess,       barrier.oldLayout,    barrier.newLayout,
-                                       barrier.srcFamilyIdx,    barrier.dstFamilyIdx, handle,
-                                       barrier.subresourceRange};
+    return vk::ImageMemoryBarrier2{barrier.srcStages,       barrier.srcAccess,    barrier.dstStages,
+                                   barrier.dstAccess,       barrier.oldLayout,    barrier.newLayout,
+                                   barrier.srcFamilyIdx,    barrier.dstFamilyIdx, handle,
+                                   barrier.subresourceRange};
 }
 
 [[nodiscard]] vk::BufferMemoryBarrier2 translate_one_barrier(caldera::detail::BufferBarrier const &barrier,
-                                                             caldera::ResourceMap const &resourceMap,
-                                                             caldera::ResourceStateManager const &stateManager) {
+                                                             caldera::ResourceMap const &resourceMap) {
     auto const handle = resourceMap.at(barrier.id);
 
-    if (barrier.srcFamilyIdx == vk::QueueFamilyIgnored && barrier.dstFamilyIdx != vk::QueueFamilyIgnored) {
-        auto const lastState = stateManager.get_last_state(barrier.id);
-
-        if (lastState.familyIdx == vk::QueueFamilyIgnored || lastState.familyIdx == barrier.dstFamilyIdx)
-            return vk::BufferMemoryBarrier2{
-                lastState.stages,       lastState.access, barrier.dstStages, barrier.dstAccess, vk::QueueFamilyIgnored,
-                vk::QueueFamilyIgnored, handle,           barrier.offset,    barrier.size};
-        else
-            return vk::BufferMemoryBarrier2{{},
-                                            {},
-                                            barrier.dstStages,
-                                            barrier.dstAccess,
-                                            lastState.familyIdx,
-                                            barrier.dstFamilyIdx,
-                                            handle,
-                                            barrier.offset,
-                                            barrier.size};
-    } else
-        return vk::BufferMemoryBarrier2{barrier.srcStages,
-                                        barrier.srcAccess,
-                                        barrier.dstStages,
-                                        barrier.dstAccess,
-                                        barrier.srcFamilyIdx,
-                                        barrier.dstFamilyIdx,
-                                        handle,
-                                        barrier.offset,
-                                        barrier.size};
+    return vk::BufferMemoryBarrier2{barrier.srcStages,
+                                    barrier.srcAccess,
+                                    barrier.dstStages,
+                                    barrier.dstAccess,
+                                    barrier.srcFamilyIdx,
+                                    barrier.dstFamilyIdx,
+                                    handle,
+                                    0,
+                                    vk::WholeSize};
 }
 
 [[nodiscard]] caldera::ImageState translate_to_state(caldera::detail::ImageTouch const &touch,
@@ -108,12 +68,11 @@ void prepare_execution_memory(caldera::ExecutionMemory &memory, caldera::detail:
 }
 
 void translate_compiled_barriers(caldera::ExecutionMemory &memory, caldera::detail::CompiledGraph const &graph,
-                                 caldera::ResourceMap const &resourceMap,
-                                 caldera::ResourceStateManager const &stateManager) {
+                                 caldera::ResourceMap const &resourceMap) {
     memory.imageBarriers.resize(graph.imageBarriers.size());
     memory.bufferBarriers.resize(graph.bufferBarriers.size());
 
-    auto const func = [&](auto const &barrier) { return ::translate_one_barrier(barrier, resourceMap, stateManager); };
+    auto const func = [&](auto const &barrier) { return ::translate_one_barrier(barrier, resourceMap); };
 
     std::ranges::transform(graph.imageBarriers, memory.imageBarriers.begin(), func);
     std::ranges::transform(graph.bufferBarriers, memory.bufferBarriers.begin(), func);
@@ -224,7 +183,7 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
 
     ::prepare_execution_memory(memory, graph.m_compiled);
 
-    ::translate_compiled_barriers(memory, graph.m_compiled, *context.resourceMap, *context.stateManager);
+    ::translate_compiled_barriers(memory, graph.m_compiled, *context.resourceMap);
     ::copy_pass_dependencies(memory, graph.m_compiled);
 
 #ifndef NDEBUG
