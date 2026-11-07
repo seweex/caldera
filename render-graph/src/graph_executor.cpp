@@ -1,5 +1,8 @@
 #include <caldera/command_buffer_distributor.hpp>
 #include <caldera/graph_executor.hpp>
+
+#include "caldera/detail/access_resolver.hpp"
+
 #include <caldera/render_graph.hpp>
 #include <caldera/resource_map.hpp>
 #include <caldera/resource_state_manager.hpp>
@@ -12,71 +15,6 @@
 #endif
 
 namespace {
-[[nodiscard]] vk::ImageMemoryBarrier2 translate_one_barrier(caldera::detail::ImageBarrier const &barrier,
-                                                            caldera::ResourceMap const &resourceMap,
-                                                            caldera::ResourceStateManager const &stateManager) {
-    auto const handle = resourceMap.at(barrier.id);
-
-    if (barrier.srcFamilyIdx == vk::QueueFamilyIgnored && barrier.dstFamilyIdx != vk::QueueFamilyIgnored) {
-        auto const lastState = stateManager.get_last_state(barrier.id);
-
-        if (lastState.familyIdx == vk::QueueFamilyIgnored || lastState.familyIdx == barrier.dstFamilyIdx)
-            return vk::ImageMemoryBarrier2{lastState.stages,        lastState.access,       barrier.dstStages,
-                                           barrier.dstAccess,       lastState.layout,       barrier.newLayout,
-                                           vk::QueueFamilyIgnored,  vk::QueueFamilyIgnored, handle,
-                                           barrier.subresourceRange};
-        else
-            return vk::ImageMemoryBarrier2{{},
-                                           {},
-                                           barrier.dstStages,
-                                           barrier.dstAccess,
-                                           lastState.layout,
-                                           barrier.newLayout,
-                                           lastState.familyIdx,
-                                           barrier.dstFamilyIdx,
-                                           handle,
-                                           barrier.subresourceRange};
-    } else
-        return vk::ImageMemoryBarrier2{barrier.srcStages,       barrier.srcAccess,    barrier.dstStages,
-                                       barrier.dstAccess,       barrier.oldLayout,    barrier.newLayout,
-                                       barrier.srcFamilyIdx,    barrier.dstFamilyIdx, handle,
-                                       barrier.subresourceRange};
-}
-
-[[nodiscard]] vk::BufferMemoryBarrier2 translate_one_barrier(caldera::detail::BufferBarrier const &barrier,
-                                                             caldera::ResourceMap const &resourceMap,
-                                                             caldera::ResourceStateManager const &stateManager) {
-    auto const handle = resourceMap.at(barrier.id);
-
-    if (barrier.srcFamilyIdx == vk::QueueFamilyIgnored && barrier.dstFamilyIdx != vk::QueueFamilyIgnored) {
-        auto const lastState = stateManager.get_last_state(barrier.id);
-
-        if (lastState.familyIdx == vk::QueueFamilyIgnored || lastState.familyIdx == barrier.dstFamilyIdx)
-            return vk::BufferMemoryBarrier2{
-                lastState.stages,       lastState.access, barrier.dstStages, barrier.dstAccess, vk::QueueFamilyIgnored,
-                vk::QueueFamilyIgnored, handle,           barrier.offset,    barrier.size};
-        else
-            return vk::BufferMemoryBarrier2{{},
-                                            {},
-                                            barrier.dstStages,
-                                            barrier.dstAccess,
-                                            lastState.familyIdx,
-                                            barrier.dstFamilyIdx,
-                                            handle,
-                                            barrier.offset,
-                                            barrier.size};
-    } else
-        return vk::BufferMemoryBarrier2{barrier.srcStages,
-                                        barrier.srcAccess,
-                                        barrier.dstStages,
-                                        barrier.dstAccess,
-                                        barrier.srcFamilyIdx,
-                                        barrier.dstFamilyIdx,
-                                        handle,
-                                        barrier.offset,
-                                        barrier.size};
-}
-
 [[nodiscard]] caldera::ImageState translate_to_state(caldera::detail::ImageTouch const &touch,
                                                      caldera::FamilyNumbers const &families) noexcept {
     return caldera::ImageState{.stages = touch.stages,
@@ -90,33 +28,158 @@ namespace {
     return caldera::BufferState{
         .stages = touch.stages, .access = touch.access, .familyIdx = families.get(touch.family)};
 }
+
+[[nodiscard]] vk::ImageMemoryBarrier2 translate_one_barrier(caldera::detail::ImageBarrier const &barrier,
+                                                            caldera::ResourceMap const &resourceMap) {
+    auto const handle = resourceMap.at(barrier.id);
+
+    return vk::ImageMemoryBarrier2{barrier.srcStages,       barrier.srcAccess,    barrier.dstStages,
+                                   barrier.dstAccess,       barrier.oldLayout,    barrier.newLayout,
+                                   barrier.srcFamilyIdx,    barrier.dstFamilyIdx, handle,
+                                   barrier.subresourceRange};
+}
+
+[[nodiscard]] vk::BufferMemoryBarrier2 translate_one_barrier(caldera::detail::BufferBarrier const &barrier,
+                                                             caldera::ResourceMap const &resourceMap) {
+    auto const handle = resourceMap.at(barrier.id);
+
+    return vk::BufferMemoryBarrier2{barrier.srcStages,
+                                    barrier.srcAccess,
+                                    barrier.dstStages,
+                                    barrier.dstAccess,
+                                    barrier.srcFamilyIdx,
+                                    barrier.dstFamilyIdx,
+                                    handle,
+                                    0,
+                                    vk::WholeSize};
+}
+
+[[nodiscard]] std::optional<vk::ImageMemoryBarrier2>
+generate_one_initial_barrier(caldera::ImageID const image, caldera::detail::ImageTrackedInfo const &trackedInfo,
+                             caldera::ResourceStateManager const &stateManager, caldera::ResourceMap const &resourceMap,
+                             caldera::FamilyNumbers const &families) {
+    auto const handle = resourceMap.at(image);
+    auto const srcState = stateManager.get_last_state(image);
+    auto const dstTate = translate_to_state(trackedInfo.firstTouch, families);
+
+    caldera::detail::AccessResolver constexpr resolver{};
+
+    if (auto const hazard = resolver.has_hazards(srcState, dstTate); hazard != caldera::detail::HazardType::none) {
+        vk::ImageMemoryBarrier2 result{};
+
+        if (hazard == caldera::detail::HazardType::access) {
+            result.srcStageMask = srcState.stages;
+            result.srcAccessMask = srcState.access;
+
+            result.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+            result.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+        } else {
+            result.srcQueueFamilyIndex = srcState.familyIdx;
+            result.dstQueueFamilyIndex = dstTate.familyIdx;
+        }
+
+        result.dstStageMask = dstTate.stages;
+        result.dstAccessMask = dstTate.access;
+        result.oldLayout = srcState.layout;
+        result.newLayout = dstTate.layout;
+        result.image = handle;
+        result.subresourceRange = {trackedInfo.aspect, 0, vk::RemainingMipLevels, 0, vk::RemainingArrayLayers};
+
+        return result;
+    }
+
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<vk::BufferMemoryBarrier2>
+generate_one_initial_barrier(caldera::BufferID const buffer, caldera::detail::BufferTrackedInfo const &trackedInfo,
+                             caldera::ResourceStateManager const &stateManager, caldera::ResourceMap const &resourceMap,
+                             caldera::FamilyNumbers const &families) {
+    auto const handle = resourceMap.at(buffer);
+    auto const srcState = stateManager.get_last_state(buffer);
+    auto const dstTate = translate_to_state(trackedInfo.firstTouch, families);
+
+    caldera::detail::AccessResolver constexpr resolver{};
+
+    if (auto const hazard = resolver.has_hazards(srcState, dstTate); hazard != caldera::detail::HazardType::none) {
+        vk::BufferMemoryBarrier2 result{};
+
+        if (hazard == caldera::detail::HazardType::access) {
+            result.srcStageMask = srcState.stages;
+            result.srcAccessMask = srcState.access;
+
+            result.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+            result.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+        } else {
+            result.srcQueueFamilyIndex = srcState.familyIdx;
+            result.dstQueueFamilyIndex = dstTate.familyIdx;
+        }
+
+        result.dstStageMask = dstTate.stages;
+        result.dstAccessMask = dstTate.access;
+        result.buffer = handle;
+        result.offset = 0;
+        result.size = vk::WholeSize;
+
+        return result;
+    }
+
+    return std::nullopt;
+}
 } // namespace
 
 namespace {
 void prepare_execution_memory(caldera::ExecutionMemory &memory, caldera::detail::CompiledGraph const &graph) {
-    memory.imageBarriers.clear();
-    memory.bufferBarriers.clear();
+    memory.imageTranslatedBarriers.clear();
+    memory.bufferTranslatedBarriers.clear();
+
+    memory.imageInitBarriers.clear();
+    memory.bufferInitBarriers.clear();
 
     memory.passDependencies.clear();
     memory.submittablePasses.clear();
 
-    memory.imageBarriers.reserve(graph.imageBarriers.size() + graph.trackedImages.size());
-    memory.bufferBarriers.reserve(graph.bufferBarriers.size() + graph.trackedBuffers.size());
+    memory.imageTranslatedBarriers.reserve(graph.imageBarriers.size() + graph.trackedImages.size());
+    memory.bufferTranslatedBarriers.reserve(graph.bufferBarriers.size() + graph.trackedBuffers.size());
+
+    memory.imageInitBarriers.reserve(graph.initImages.size());
+    memory.bufferInitBarriers.reserve(graph.initBuffers.size());
 
     memory.passDependencies.reserve(graph.passDependencies.size());
     memory.submittablePasses.reserve(graph.compiledPasses.size());
 }
 
 void translate_compiled_barriers(caldera::ExecutionMemory &memory, caldera::detail::CompiledGraph const &graph,
-                                 caldera::ResourceMap const &resourceMap,
-                                 caldera::ResourceStateManager const &stateManager) {
-    memory.imageBarriers.resize(graph.imageBarriers.size());
-    memory.bufferBarriers.resize(graph.bufferBarriers.size());
+                                 caldera::ResourceMap const &resourceMap) {
+    memory.imageTranslatedBarriers.resize(graph.imageBarriers.size());
+    memory.bufferTranslatedBarriers.resize(graph.bufferBarriers.size());
 
-    auto const func = [&](auto const &barrier) { return ::translate_one_barrier(barrier, resourceMap, stateManager); };
+    auto const func = [&](auto const &barrier) { return ::translate_one_barrier(barrier, resourceMap); };
 
-    std::ranges::transform(graph.imageBarriers, memory.imageBarriers.begin(), func);
-    std::ranges::transform(graph.bufferBarriers, memory.bufferBarriers.begin(), func);
+    std::ranges::transform(graph.imageBarriers, memory.imageTranslatedBarriers.begin(), func);
+    std::ranges::transform(graph.bufferBarriers, memory.bufferTranslatedBarriers.begin(), func);
+}
+
+void generate_initial_barriers_for_pass(caldera::ExecutionMemory &memory, caldera::detail::CompiledGraph const &graph,
+                                        caldera::ResourceStateManager const &stateManager,
+                                        caldera::ResourceMap const &resourceMap, caldera::FamilyNumbers const &families,
+                                        std::span<caldera::ImageID const> const initImages,
+                                        std::span<caldera::BufferID const> const initBuffers) {
+    auto const generateFor = [&](auto const resources, auto const &trackingTable, auto &barrierList) {
+        barrierList.clear();
+        assert(barrierList.capacity() >= resources.size());
+
+        for (auto const id : resources) {
+            auto const &trackedInfo = trackingTable.at(id);
+
+            if (auto const barrier =
+                    ::generate_one_initial_barrier(id, trackedInfo, stateManager, resourceMap, families))
+                barrierList.push_back(barrier.value());
+        }
+    };
+
+    generateFor(initImages, graph.trackedImages, memory.imageInitBarriers);
+    generateFor(initBuffers, graph.trackedBuffers, memory.bufferInitBarriers);
 }
 
 void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::CompiledGraph const &graph) {
@@ -126,9 +189,21 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
 [[nodiscard]] vk::Result process_cmd(vk::CommandBuffer const cmd, caldera::ExecutionMemory const &memory,
                                      caldera::ResourceMap const &resourceMap,
                                      caldera::detail::CompiledPass const &pass) {
-    auto const applyBarriers = [&](auto const &imageBarrierList, auto const &bufferBarrierList,
-                                   uint32_t const imageOffset, uint32_t const imageSize, uint32_t const bufferOffset,
-                                   uint32_t const bufferSize) {
+    auto const applyInitBarriers = [&] {
+        vk::DependencyInfo const dependencyInfo{{},
+                                                0,
+                                                nullptr,
+                                                static_cast<uint32_t>(memory.bufferInitBarriers.size()),
+                                                memory.bufferInitBarriers.data(),
+                                                static_cast<uint32_t>(memory.imageInitBarriers.size()),
+                                                memory.imageInitBarriers.data()};
+
+        cmd.pipelineBarrier2(dependencyInfo);
+    };
+
+    auto const applyBakedBarriers = [&](auto const &imageBarrierList, auto const &bufferBarrierList,
+                                        uint32_t const imageOffset, uint32_t const imageSize,
+                                        uint32_t const bufferOffset, uint32_t const bufferSize) {
         vk::DependencyInfo const dependencyInfo{{},
                                                 0,
                                                 nullptr,
@@ -144,13 +219,14 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
         rCode < vk::Result::eSuccess)
         return rCode;
 
-    applyBarriers(memory.imageBarriers, memory.bufferBarriers, pass.imagePreBarrierOffset, pass.imagePreBarrierSize,
-                  pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize);
+    applyInitBarriers();
+    applyBakedBarriers(memory.imageTranslatedBarriers, memory.bufferTranslatedBarriers, pass.imagePreBarrierOffset,
+                       pass.imagePreBarrierSize, pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize);
 
     std::invoke(pass.callback, cmd, resourceMap);
 
-    applyBarriers(memory.imageBarriers, memory.bufferBarriers, pass.imagePostBarrierOffset, pass.imagePostBarrierSize,
-                  pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize);
+    applyBakedBarriers(memory.imageTranslatedBarriers, memory.bufferTranslatedBarriers, pass.imagePostBarrierOffset,
+                       pass.imagePostBarrierSize, pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize);
 
     if (auto const rCode = cmd.end(); rCode < vk::Result::eSuccess)
         return rCode;
@@ -194,24 +270,25 @@ template <class TagTy> void print_barrier_group(auto const &group) {
     }
 }
 
-void print_all_barriers(caldera::ExecutionMemory const &memory, caldera::detail::CompiledGraph const &graph) {
-    for (uint32_t passIdx = 0; passIdx < graph.compiledPasses.size(); ++passIdx) {
-        auto const &pass = graph.compiledPasses[passIdx];
+void print_pass_barriers(caldera::ExecutionMemory const &memory, caldera::detail::CompiledPass const &pass,
+                         uint32_t const passIdx) {
+    std::cout << "\n=== In Pass #" << passIdx << " ===\n";
+    std::cout << "=- Dynamic init-barriers -=\n";
 
-        std::cout << "\n=== In Pass #" << passIdx << " ===\n";
-        std::cout << "=- Pre-barriers -=\n";
+    ::print_barrier_group<caldera::ImageTag>(memory.imageInitBarriers);
+    ::print_barrier_group<caldera::BufferTag>(memory.bufferInitBarriers);
 
-        ::print_barrier_group<caldera::ImageTag>(
-            std::span{memory.imageBarriers.data() + pass.imagePreBarrierOffset, pass.imagePreBarrierSize});
-        ::print_barrier_group<caldera::BufferTag>(
-            std::span{memory.bufferBarriers.data() + pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize});
+    std::cout << "=- Baked pre-barriers -=\n";
+    ::print_barrier_group<caldera::ImageTag>(
+        std::span{memory.imageTranslatedBarriers.data() + pass.imagePreBarrierOffset, pass.imagePreBarrierSize});
+    ::print_barrier_group<caldera::BufferTag>(
+        std::span{memory.bufferTranslatedBarriers.data() + pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize});
 
-        std::cout << "=- Post-barriers -=\n";
-        ::print_barrier_group<caldera::ImageTag>(
-            std::span{memory.imageBarriers.data() + pass.imagePostBarrierOffset, pass.imagePostBarrierSize});
-        ::print_barrier_group<caldera::BufferTag>(
-            std::span{memory.bufferBarriers.data() + pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize});
-    }
+    std::cout << "=- Baked post-barriers -=\n";
+    ::print_barrier_group<caldera::ImageTag>(
+        std::span{memory.imageTranslatedBarriers.data() + pass.imagePostBarrierOffset, pass.imagePostBarrierSize});
+    ::print_barrier_group<caldera::BufferTag>(
+        std::span{memory.bufferTranslatedBarriers.data() + pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize});
 }
 #endif
 } // namespace
@@ -224,22 +301,29 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
 
     ::prepare_execution_memory(memory, graph.m_compiled);
 
-    ::translate_compiled_barriers(memory, graph.m_compiled, *context.resourceMap, *context.stateManager);
+    ::translate_compiled_barriers(memory, graph.m_compiled, *context.resourceMap);
     ::copy_pass_dependencies(memory, graph.m_compiled);
-
-#ifndef NDEBUG
-    ::print_all_barriers(memory, graph.m_compiled);
-#endif
 
     SubmittableGraph result;
 
-    for (auto const &pass : graph.m_compiled.compiledPasses) {
+    for (uint32_t passIdx = 0; passIdx < graph.m_compiled.compiledPasses.size(); ++passIdx)
+    {
+        auto const &pass = graph.m_compiled.compiledPasses[passIdx];
+
+        ::generate_initial_barriers_for_pass(
+            memory, graph.m_compiled, *context.stateManager, *context.resourceMap, graph.m_families,
+            std::span{graph.m_compiled.initImages.begin() + pass.initImageOffset, pass.initImageSize},
+            std::span{graph.m_compiled.initBuffers.begin() + pass.initBufferOffset, pass.initBufferSize});
 
         context.resourceMap->bind_resource_filters(
             std::span{graph.m_compiled.allowedImages.begin() + pass.allowedImageOffset, pass.allowedImageSize},
             std::span{graph.m_compiled.allowedBuffers.begin() + pass.allowedBufferOffset, pass.allowedBufferSize},
             std::span{graph.m_compiled.allowedImageViews.begin() + pass.allowedImageViewOffset,
                       pass.allowedImageViewSize});
+
+#ifndef NDEBUG
+        ::print_pass_barriers(memory, pass, passIdx);
+#endif
 
         auto const cmd = context.distributor->take_buffer(pass.familyIdx);
 

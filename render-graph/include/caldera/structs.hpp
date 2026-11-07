@@ -331,6 +331,12 @@ struct CompiledPass {
     uint32_t bufferPostBarrierOffset;
     uint32_t bufferPostBarrierSize;
 
+    uint32_t initImageOffset;
+    uint32_t initImageSize;
+
+    uint32_t initBufferOffset;
+    uint32_t initBufferSize;
+
     uint32_t allowedImageOffset;
     uint32_t allowedImageSize;
 
@@ -348,8 +354,12 @@ struct CompiledGraph {
     std::vector<ImageBarrier> imageBarriers;
     std::vector<BufferBarrier> bufferBarriers;
 
+    std::vector<ImageID> initImages;
+    std::vector<BufferID> initBuffers;
+
     std::vector<ImageID> allowedImages;
     std::vector<BufferID> allowedBuffers;
+
     std::vector<ImageViewID> allowedImageViews;
 
     std::vector<PassDependency> passDependencies;
@@ -404,8 +414,11 @@ struct ExecutionContext {
 
 /// @brief Execution cache memory to avoid dynamic allocations
 struct ExecutionMemory {
-    std::vector<vk::ImageMemoryBarrier2> imageBarriers;
-    std::vector<vk::BufferMemoryBarrier2> bufferBarriers;
+    std::vector<vk::ImageMemoryBarrier2> imageTranslatedBarriers;
+    std::vector<vk::BufferMemoryBarrier2> bufferTranslatedBarriers;
+
+    std::vector<vk::ImageMemoryBarrier2> imageInitBarriers;
+    std::vector<vk::BufferMemoryBarrier2> bufferInitBarriers;
 
     std::vector<PassDependency> passDependencies;
     std::vector<SubmittableGraph::Pass> submittablePasses;

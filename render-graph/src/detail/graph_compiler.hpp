@@ -296,34 +296,6 @@ template <class TableTy> [[nodiscard]] inline TableTy make_tracking_table(auto c
 
 /* * * * */
 
-[[nodiscard]] ImageBarrier inline make_initial_barrier(ImageID const id, FamilyNumbers const &families,
-                                                       ImageTrackedInfo const &trackedInfo) noexcept {
-    return ImageBarrier{
-        .srcStages = {},
-        .srcAccess = {},
-        .dstStages = trackedInfo.firstTouch.stages,
-        .dstAccess = trackedInfo.firstTouch.access,
-        .oldLayout = vk::ImageLayout::eUndefined,
-        .newLayout = trackedInfo.firstTouch.layout,
-        .srcFamilyIdx = vk::QueueFamilyIgnored,
-        .dstFamilyIdx = families.get(trackedInfo.firstTouch.family),
-        .id = id,
-        .subresourceRange = {trackedInfo.aspect, 0, vk::RemainingMipLevels, 0, vk::RemainingArrayLayers}};
-}
-
-[[nodiscard]] BufferBarrier inline make_initial_barrier(BufferID const id, FamilyNumbers const &families,
-                                                        BufferTrackedInfo const &trackedInfo) noexcept {
-    return BufferBarrier{.srcStages = {},
-                         .srcAccess = {},
-                         .dstStages = trackedInfo.firstTouch.stages,
-                         .dstAccess = trackedInfo.firstTouch.access,
-                         .srcFamilyIdx = vk::QueueFamilyIgnored,
-                         .dstFamilyIdx = families.get(trackedInfo.firstTouch.family),
-                         .id = id,
-                         .offset = 0,
-                         .size = vk::WholeSize};
-}
-
 template <class TagTy>
 inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &families, auto const barrierGroupPtr,
                                  auto const preGroupOffsetPtr, auto const preGroupCountPtr,
@@ -365,9 +337,6 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
                     srcTouch.access = lastTouch.access;
                 }
             }
-        } else if (trackedInfo.firstTouch.passIdx != UINT32_MAX) {
-            passPreBarriers[trackedInfo.firstTouch.passIdx].emplace_back(
-                make_initial_barrier(resourceID, families, trackedInfo));
         }
 
         auto const processTransition = [&](auto const &dstTouch) {
@@ -453,6 +422,40 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
 }
 
 /* * * * */
+
+template <class TagTy>
+inline void append_with_init_resources(CompiledGraph &graph, auto const resourceGroupPtr, auto const resourceOffsetPtr,
+                                       auto const resourceCountPtr, auto const &trackingTable, auto const &passOrder) {
+    auto const passCount = passOrder.size();
+
+    std::vector<std::vector<BasicResourceID<TagTy>>> passInitResources;
+    passInitResources.resize(passCount);
+
+    for (auto const &[resourceID, trackedInfo] : trackingTable)
+        passInitResources[trackedInfo.firstTouch.passIdx].emplace_back(resourceID);
+
+    for (auto &resourceList : passInitResources) {
+        std::ranges::sort(resourceList);
+        resourceList.erase(std::ranges::unique(resourceList).begin(), resourceList.end());
+    };
+
+    auto &targetResourceList = graph.*resourceGroupPtr;
+    assert(targetResourceList.empty());
+
+    targetResourceList.reserve(trackingTable.size());
+
+    for (auto const passIdx : passOrder) {
+        auto &compiled = graph.compiledPasses[passIdx];
+        auto &allowedResources = passInitResources[passIdx];
+
+        auto const count = allowedResources.size();
+        auto const offset = targetResourceList.size();
+
+        targetResourceList.insert(targetResourceList.end(), allowedResources.begin(), allowedResources.end());
+        compiled.*resourceOffsetPtr = offset;
+        compiled.*resourceCountPtr = count;
+    }
+}
 
 template <class TagTy>
 inline void append_with_allowed_resources(CompiledGraph &graph, auto const resourceGroupPtr,
@@ -588,6 +591,12 @@ inline void append_with_pass_dependencies(CompiledGraph &graph, GraphAdjacencyLi
                                     &CompiledPass::bufferPreBarrierOffset, &CompiledPass::bufferPreBarrierSize,
                                     &CompiledPass::bufferPostBarrierOffset, &CompiledPass::bufferPostBarrierSize,
                                     ir.bufferVersions, result.trackedBuffers, passOrder);
+
+    append_with_init_resources<ImageTag>(result, &CompiledGraph::initImages, &CompiledPass::initImageOffset,
+                                         &CompiledPass::initImageSize, result.trackedImages, passOrder);
+
+    append_with_init_resources<BufferTag>(result, &CompiledGraph::initBuffers, &CompiledPass::initBufferOffset,
+                                          &CompiledPass::initBufferSize, result.trackedBuffers, passOrder);
 
     append_with_allowed_resources<ImageTag>(result, &CompiledGraph::allowedImages, &CompiledPass::allowedImageOffset,
                                             &CompiledPass::allowedImageSize, ir.imageVersions, passOrder);

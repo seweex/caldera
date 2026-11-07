@@ -12,13 +12,22 @@ constexpr auto writing_masks =
     vk::AccessFlagBits2::eAccelerationStructureWriteKHR | vk::AccessFlagBits2::eTransformFeedbackWriteEXT |
     vk::AccessFlagBits2::eTransformFeedbackCounterWriteEXT;
 
-template <class TagTy>
-[[nodiscard]] caldera::detail::HazardType has_hazards(caldera::FamilyNumbers const &families, auto const &src,
-                                                      auto const &dst) {
-    auto const srcFamily = families.get(src.family);
-    auto const dstFamily = families.get(dst.family);
+[[nodiscard]] caldera::ImageState translate_to_state(caldera::detail::ImageTouch const &touch,
+                                                     caldera::FamilyNumbers const &families) noexcept {
+    return caldera::ImageState{.stages = touch.stages,
+                               .access = touch.access,
+                               .layout = touch.layout,
+                               .familyIdx = families.get(touch.family)};
+}
 
-    if (srcFamily != dstFamily)
+[[nodiscard]] caldera::BufferState translate_to_state(caldera::detail::BufferTouch const &touch,
+                                                      caldera::FamilyNumbers const &families) noexcept {
+    return caldera::BufferState{
+        .stages = touch.stages, .access = touch.access, .familyIdx = families.get(touch.family)};
+}
+
+template <class TagTy> [[nodiscard]] caldera::detail::HazardType has_hazards(auto const &src, auto const &dst) {
+    if (src.familyIdx != dst.familyIdx && src.familyIdx != vk::QueueFamilyIgnored)
         return caldera::detail::HazardType::ownership;
 
     auto const hasAccessHazards = static_cast<bool>((src.access | dst.access) & ::writing_masks);
@@ -38,12 +47,19 @@ template <class TagTy>
 namespace caldera::detail {
 HazardType AccessResolver::has_hazards(FamilyNumbers const &families, ImageTouch const &src,
                                        ImageTouch const &dst) const noexcept {
-    return ::has_hazards<ImageTag>(families, src, dst);
+    return has_hazards(translate_to_state(src, families), translate_to_state(dst, families));
 }
 
 HazardType AccessResolver::has_hazards(FamilyNumbers const &families, BufferTouch const &src,
                                        BufferTouch const &dst) const noexcept {
-    return ::has_hazards<BufferTag>(families, src, dst);
+    return has_hazards(translate_to_state(src, families), translate_to_state(dst, families));
+}
+
+HazardType AccessResolver::has_hazards(ImageState const &src, ImageState const &dst) const noexcept {
+    return ::has_hazards<ImageTag>(src, dst);
+}
+HazardType AccessResolver::has_hazards(BufferState const &src, BufferState const &dst) const noexcept {
+    return ::has_hazards<BufferTag>(src, dst);
 }
 
 ImageBarrier AccessResolver::resolve_access_hazard(ImageID const image, ImageTouch const &src, ImageTouch const &dst,
