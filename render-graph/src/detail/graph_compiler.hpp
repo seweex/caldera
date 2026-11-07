@@ -296,34 +296,6 @@ template <class TableTy> [[nodiscard]] inline TableTy make_tracking_table(auto c
 
 /* * * * */
 
-[[nodiscard]] ImageBarrier inline make_initial_barrier(ImageID const id, FamilyNumbers const &families,
-                                                       ImageTrackedInfo const &trackedInfo) noexcept {
-    return ImageBarrier{
-        .srcStages = {},
-        .srcAccess = {},
-        .dstStages = trackedInfo.firstTouch.stages,
-        .dstAccess = trackedInfo.firstTouch.access,
-        .oldLayout = vk::ImageLayout::eUndefined,
-        .newLayout = trackedInfo.firstTouch.layout,
-        .srcFamilyIdx = vk::QueueFamilyIgnored,
-        .dstFamilyIdx = families.get(trackedInfo.firstTouch.family),
-        .id = id,
-        .subresourceRange = {trackedInfo.aspect, 0, vk::RemainingMipLevels, 0, vk::RemainingArrayLayers}};
-}
-
-[[nodiscard]] BufferBarrier inline make_initial_barrier(BufferID const id, FamilyNumbers const &families,
-                                                        BufferTrackedInfo const &trackedInfo) noexcept {
-    return BufferBarrier{.srcStages = {},
-                         .srcAccess = {},
-                         .dstStages = trackedInfo.firstTouch.stages,
-                         .dstAccess = trackedInfo.firstTouch.access,
-                         .srcFamilyIdx = vk::QueueFamilyIgnored,
-                         .dstFamilyIdx = families.get(trackedInfo.firstTouch.family),
-                         .id = id,
-                         .offset = 0,
-                         .size = vk::WholeSize};
-}
-
 template <class TagTy>
 inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &families, auto const barrierGroupPtr,
                                  auto const preGroupOffsetPtr, auto const preGroupCountPtr,
@@ -365,9 +337,6 @@ inline void append_with_barriers(CompiledGraph &graph, FamilyNumbers const &fami
                     srcTouch.access = lastTouch.access;
                 }
             }
-        } else if (trackedInfo.firstTouch.passIdx != UINT32_MAX) {
-            passPreBarriers[trackedInfo.firstTouch.passIdx].emplace_back(
-                make_initial_barrier(resourceID, families, trackedInfo));
         }
 
         auto const processTransition = [&](auto const &dstTouch) {

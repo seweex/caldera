@@ -14,58 +14,6 @@ class GraphCompilerAdvancedTest : public ::testing::Test {
     static constexpr caldera::FamilyNumbers dummyFamilies = {.graphics = 0, .transfer = 1, .compute = 2};
 };
 
-TEST_F(GraphCompilerAdvancedTest, MakeInitialImageBarrierSetsUndefinedLayoutAndFullRange) {
-    caldera::ImageID constexpr imageId{.isTransient = 0, .index = 7};
-
-    cd::ImageTrackedInfo const trackedInfo{.firstTouch = {.stages = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                                                          .access = vk::AccessFlagBits2::eColorAttachmentWrite,
-                                                          .layout = vk::ImageLayout::eColorAttachmentOptimal,
-                                                          .family = caldera::FamilyType::graphics,
-                                                          .passIdx = 0},
-                                           .lastTouch = {},
-                                           .usages = vk::ImageUsageFlagBits::eColorAttachment,
-                                           .aspect = vk::ImageAspectFlagBits::eColor};
-
-    auto const barrier = cd::make_initial_barrier(imageId, dummyFamilies, trackedInfo);
-
-    EXPECT_EQ(barrier.id, imageId);
-    EXPECT_EQ(barrier.oldLayout, vk::ImageLayout::eUndefined);
-    EXPECT_EQ(barrier.newLayout, vk::ImageLayout::eColorAttachmentOptimal);
-    EXPECT_EQ(barrier.srcFamilyIdx, vk::QueueFamilyIgnored);
-    EXPECT_EQ(barrier.dstFamilyIdx, dummyFamilies.get(caldera::FamilyType::graphics));
-    EXPECT_EQ(barrier.dstStages, vk::PipelineStageFlagBits2::eColorAttachmentOutput);
-    EXPECT_EQ(barrier.dstAccess, vk::AccessFlagBits2::eColorAttachmentWrite);
-    EXPECT_EQ(barrier.subresourceRange.aspectMask, vk::ImageAspectFlagBits::eColor);
-    EXPECT_EQ(barrier.subresourceRange.baseMipLevel, 0);
-    EXPECT_EQ(barrier.subresourceRange.levelCount, vk::RemainingMipLevels);
-    EXPECT_EQ(barrier.subresourceRange.baseArrayLayer, 0);
-    EXPECT_EQ(barrier.subresourceRange.layerCount, vk::RemainingArrayLayers);
-}
-
-TEST_F(GraphCompilerAdvancedTest, MakeInitialBufferBarrierSetsWholeRangeAndIgnoredSourceFamily) {
-    caldera::BufferID constexpr bufferId{.isTransient = 0, .index = 3};
-
-    cd::BufferTrackedInfo const trackedInfo{.firstTouch = {.stages = vk::PipelineStageFlagBits2::eVertexAttributeInput,
-                                                           .access = vk::AccessFlagBits2::eVertexAttributeRead,
-                                                           .family = caldera::FamilyType::transfer,
-                                                           .passIdx = 1},
-                                            .lastTouch = {},
-                                            .usages = vk::BufferUsageFlagBits::eVertexBuffer,
-                                            .mappedAccessPercentage = 0,
-                                            .hasRandomMappedAccess = false,
-                                            .hasMappedReading = false};
-
-    auto const barrier = cd::make_initial_barrier(bufferId, dummyFamilies, trackedInfo);
-
-    EXPECT_EQ(barrier.id, bufferId);
-    EXPECT_EQ(barrier.srcFamilyIdx, vk::QueueFamilyIgnored);
-    EXPECT_EQ(barrier.dstFamilyIdx, dummyFamilies.get(caldera::FamilyType::transfer));
-    EXPECT_EQ(barrier.dstStages, vk::PipelineStageFlagBits2::eVertexAttributeInput);
-    EXPECT_EQ(barrier.dstAccess, vk::AccessFlagBits2::eVertexAttributeRead);
-    EXPECT_EQ(barrier.offset, 0);
-    EXPECT_EQ(barrier.size, vk::WholeSize);
-}
-
 TEST_F(GraphCompilerAdvancedTest, AppendAdjacencyListConnectsWriterToReadersAndNextWriter) {
     cd::GraphAdjacencyList adjacency;
     adjacency.passChildren.resize(4);
