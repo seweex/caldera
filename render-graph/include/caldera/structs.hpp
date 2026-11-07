@@ -331,6 +331,12 @@ struct CompiledPass {
     uint32_t bufferPostBarrierOffset;
     uint32_t bufferPostBarrierSize;
 
+    uint32_t initImageOffset;
+    uint32_t initImageSize;
+
+    uint32_t initBufferOffset;
+    uint32_t initBufferSize;
+
     uint32_t allowedImageOffset;
     uint32_t allowedImageSize;
 
@@ -348,8 +354,12 @@ struct CompiledGraph {
     std::vector<ImageBarrier> imageBarriers;
     std::vector<BufferBarrier> bufferBarriers;
 
+    std::vector<ImageID> initImages;
+    std::vector<BufferID> initBuffers;
+
     std::vector<ImageID> allowedImages;
     std::vector<BufferID> allowedBuffers;
+
     std::vector<ImageViewID> allowedImageViews;
 
     std::vector<PassDependency> passDependencies;
