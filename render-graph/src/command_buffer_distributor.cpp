@@ -11,6 +11,7 @@ void CommandBufferDistributor::feed(uint32_t const family, std::span<vk::Command
 }
 
 void CommandBufferDistributor::reset(uint32_t const family) noexcept { m_commandFamilies[family].activeCount = 0; }
+void CommandBufferDistributor::reset_all() noexcept { for (auto& family : m_commandFamilies) family.activeCount = 0; }
 
 vk::CommandBuffer CommandBufferDistributor::take_buffer(uint32_t const family) {
     auto &commands = m_commandFamilies[family];

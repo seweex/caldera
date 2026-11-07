@@ -30,6 +30,12 @@ class CommandBufferDistributor {
      */
     void reset(uint32_t family) noexcept;
 
+    /**
+     * @brief Marks all command buffers of all family pools reset
+     * @note This method doesn't call the vkResetCommandBuffer and vkResetCommandPool funcs
+     */
+    void reset_all() noexcept;
+
   private:
     [[nodiscard]] vk::CommandBuffer take_buffer(uint32_t family);
 
