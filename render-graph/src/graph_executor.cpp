@@ -270,28 +270,25 @@ template <class TagTy> void print_barrier_group(auto const &group) {
     }
 }
 
-void print_all_barriers(caldera::ExecutionMemory const &memory, caldera::detail::CompiledGraph const &graph) {
-    for (uint32_t passIdx = 0; passIdx < graph.compiledPasses.size(); ++passIdx) {
-        auto const &pass = graph.compiledPasses[passIdx];
+void print_pass_barriers(caldera::ExecutionMemory const &memory, caldera::detail::CompiledPass const &pass,
+                         uint32_t const passIdx) {
+    std::cout << "\n=== In Pass #" << passIdx << " ===\n";
+    std::cout << "=- Dynamic init-barriers -=\n";
 
-        std::cout << "\n=== In Pass #" << passIdx << " ===\n";
-        std::cout << "=- Dynamic init-barriers -=\n";
+    ::print_barrier_group<caldera::ImageTag>(memory.imageInitBarriers);
+    ::print_barrier_group<caldera::BufferTag>(memory.bufferInitBarriers);
 
-        ::print_barrier_group<caldera::ImageTag>(memory.imageInitBarriers);
-        ::print_barrier_group<caldera::BufferTag>(memory.bufferInitBarriers);
+    std::cout << "=- Baked pre-barriers -=\n";
+    ::print_barrier_group<caldera::ImageTag>(
+        std::span{memory.imageTranslatedBarriers.data() + pass.imagePreBarrierOffset, pass.imagePreBarrierSize});
+    ::print_barrier_group<caldera::BufferTag>(
+        std::span{memory.bufferTranslatedBarriers.data() + pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize});
 
-        std::cout << "=- Baked pre-barriers -=\n";
-        ::print_barrier_group<caldera::ImageTag>(
-            std::span{memory.imageTranslatedBarriers.data() + pass.imagePreBarrierOffset, pass.imagePreBarrierSize});
-        ::print_barrier_group<caldera::BufferTag>(
-            std::span{memory.bufferTranslatedBarriers.data() + pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize});
-
-        std::cout << "=- Baked post-barriers -=\n";
-        ::print_barrier_group<caldera::ImageTag>(
-            std::span{memory.imageTranslatedBarriers.data() + pass.imagePostBarrierOffset, pass.imagePostBarrierSize});
-        ::print_barrier_group<caldera::BufferTag>(std::span{
-            memory.bufferTranslatedBarriers.data() + pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize});
-    }
+    std::cout << "=- Baked post-barriers -=\n";
+    ::print_barrier_group<caldera::ImageTag>(
+        std::span{memory.imageTranslatedBarriers.data() + pass.imagePostBarrierOffset, pass.imagePostBarrierSize});
+    ::print_barrier_group<caldera::BufferTag>(
+        std::span{memory.bufferTranslatedBarriers.data() + pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize});
 }
 #endif
 } // namespace
@@ -307,13 +304,12 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
     ::translate_compiled_barriers(memory, graph.m_compiled, *context.resourceMap);
     ::copy_pass_dependencies(memory, graph.m_compiled);
 
-#ifndef NDEBUG
-    ::print_all_barriers(memory, graph.m_compiled);
-#endif
-
     SubmittableGraph result;
 
-    for (auto const &pass : graph.m_compiled.compiledPasses) {
+    for (uint32_t passIdx = 0; passIdx < graph.m_compiled.compiledPasses.size(); ++passIdx)
+    {
+        auto const &pass = graph.m_compiled.compiledPasses[passIdx];
+
         ::generate_initial_barriers_for_pass(
             memory, graph.m_compiled, *context.stateManager, *context.resourceMap, graph.m_families,
             std::span{graph.m_compiled.initImages.begin() + pass.initImageOffset, pass.initImageSize},
@@ -324,6 +320,10 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
             std::span{graph.m_compiled.allowedBuffers.begin() + pass.allowedBufferOffset, pass.allowedBufferSize},
             std::span{graph.m_compiled.allowedImageViews.begin() + pass.allowedImageViewOffset,
                       pass.allowedImageViewSize});
+
+#ifndef NDEBUG
+        ::print_pass_barriers(memory, pass, passIdx);
+#endif
 
         auto const cmd = context.distributor->take_buffer(pass.familyIdx);
 
