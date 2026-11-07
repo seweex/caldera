@@ -27,10 +27,7 @@ constexpr auto writing_masks =
 }
 
 template <class TagTy> [[nodiscard]] caldera::detail::HazardType has_hazards(auto const &src, auto const &dst) {
-    auto const srcFamily = src.familyIdx;
-    auto const dstFamily = dst.familyIdx;
-
-    if (srcFamily != dstFamily)
+    if (src.familyIdx != dst.familyIdx && src.familyIdx != vk::QueueFamilyIgnored)
         return caldera::detail::HazardType::ownership;
 
     auto const hasAccessHazards = static_cast<bool>((src.access | dst.access) & ::writing_masks);
