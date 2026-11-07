@@ -133,11 +133,17 @@ void prepare_execution_memory(caldera::ExecutionMemory &memory, caldera::detail:
     memory.imageTranslatedBarriers.clear();
     memory.bufferTranslatedBarriers.clear();
 
+    memory.imageInitBarriers.clear();
+    memory.bufferInitBarriers.clear();
+
     memory.passDependencies.clear();
     memory.submittablePasses.clear();
 
     memory.imageTranslatedBarriers.reserve(graph.imageBarriers.size() + graph.trackedImages.size());
     memory.bufferTranslatedBarriers.reserve(graph.bufferBarriers.size() + graph.trackedBuffers.size());
+
+    memory.imageInitBarriers.reserve(graph.initImages.size());
+    memory.bufferInitBarriers.reserve(graph.initBuffers.size());
 
     memory.passDependencies.reserve(graph.passDependencies.size());
     memory.submittablePasses.reserve(graph.compiledPasses.size());
@@ -183,9 +189,21 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
 [[nodiscard]] vk::Result process_cmd(vk::CommandBuffer const cmd, caldera::ExecutionMemory const &memory,
                                      caldera::ResourceMap const &resourceMap,
                                      caldera::detail::CompiledPass const &pass) {
-    auto const applyBarriers = [&](auto const &imageBarrierList, auto const &bufferBarrierList,
-                                   uint32_t const imageOffset, uint32_t const imageSize, uint32_t const bufferOffset,
-                                   uint32_t const bufferSize) {
+    auto const applyInitBarriers = [&] {
+        vk::DependencyInfo const dependencyInfo{{},
+                                                0,
+                                                nullptr,
+                                                static_cast<uint32_t>(memory.bufferInitBarriers.size()),
+                                                memory.bufferInitBarriers.data(),
+                                                static_cast<uint32_t>(memory.imageInitBarriers.size()),
+                                                memory.imageInitBarriers.data()};
+
+        cmd.pipelineBarrier2(dependencyInfo);
+    };
+
+    auto const applyBakedBarriers = [&](auto const &imageBarrierList, auto const &bufferBarrierList,
+                                        uint32_t const imageOffset, uint32_t const imageSize,
+                                        uint32_t const bufferOffset, uint32_t const bufferSize) {
         vk::DependencyInfo const dependencyInfo{{},
                                                 0,
                                                 nullptr,
@@ -201,13 +219,14 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
         rCode < vk::Result::eSuccess)
         return rCode;
 
-    applyBarriers(memory.imageTranslatedBarriers, memory.bufferTranslatedBarriers, pass.imagePreBarrierOffset,
-                  pass.imagePreBarrierSize, pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize);
+    applyInitBarriers();
+    applyBakedBarriers(memory.imageTranslatedBarriers, memory.bufferTranslatedBarriers, pass.imagePreBarrierOffset,
+                       pass.imagePreBarrierSize, pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize);
 
     std::invoke(pass.callback, cmd, resourceMap);
 
-    applyBarriers(memory.imageTranslatedBarriers, memory.bufferTranslatedBarriers, pass.imagePostBarrierOffset,
-                  pass.imagePostBarrierSize, pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize);
+    applyBakedBarriers(memory.imageTranslatedBarriers, memory.bufferTranslatedBarriers, pass.imagePostBarrierOffset,
+                       pass.imagePostBarrierSize, pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize);
 
     if (auto const rCode = cmd.end(); rCode < vk::Result::eSuccess)
         return rCode;
