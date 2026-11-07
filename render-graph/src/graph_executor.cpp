@@ -275,14 +275,18 @@ void print_all_barriers(caldera::ExecutionMemory const &memory, caldera::detail:
         auto const &pass = graph.compiledPasses[passIdx];
 
         std::cout << "\n=== In Pass #" << passIdx << " ===\n";
-        std::cout << "=- Pre-barriers -=\n";
+        std::cout << "=- Dynamic init-barriers -=\n";
 
+        ::print_barrier_group<caldera::ImageTag>(memory.imageInitBarriers);
+        ::print_barrier_group<caldera::BufferTag>(memory.bufferInitBarriers);
+
+        std::cout << "=- Baked pre-barriers -=\n";
         ::print_barrier_group<caldera::ImageTag>(
             std::span{memory.imageTranslatedBarriers.data() + pass.imagePreBarrierOffset, pass.imagePreBarrierSize});
         ::print_barrier_group<caldera::BufferTag>(
             std::span{memory.bufferTranslatedBarriers.data() + pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize});
 
-        std::cout << "=- Post-barriers -=\n";
+        std::cout << "=- Baked post-barriers -=\n";
         ::print_barrier_group<caldera::ImageTag>(
             std::span{memory.imageTranslatedBarriers.data() + pass.imagePostBarrierOffset, pass.imagePostBarrierSize});
         ::print_barrier_group<caldera::BufferTag>(std::span{
