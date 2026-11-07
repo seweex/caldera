@@ -414,8 +414,11 @@ struct ExecutionContext {
 
 /// @brief Execution cache memory to avoid dynamic allocations
 struct ExecutionMemory {
-    std::vector<vk::ImageMemoryBarrier2> imageBarriers;
-    std::vector<vk::BufferMemoryBarrier2> bufferBarriers;
+    std::vector<vk::ImageMemoryBarrier2> imageTranslatedBarriers;
+    std::vector<vk::BufferMemoryBarrier2> bufferTranslatedBarriers;
+
+    std::vector<vk::ImageMemoryBarrier2> imageInitBarriers;
+    std::vector<vk::BufferMemoryBarrier2> bufferInitBarriers;
 
     std::vector<PassDependency> passDependencies;
     std::vector<SubmittableGraph::Pass> submittablePasses;

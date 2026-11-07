@@ -12,6 +12,9 @@ class AccessResolver {
     [[nodiscard]] HazardType has_hazards(FamilyNumbers const &families, BufferTouch const &src,
                                          BufferTouch const &dst) const noexcept;
 
+    [[nodiscard]] HazardType has_hazards(ImageState const &src, ImageState const &dst) const noexcept;
+    [[nodiscard]] HazardType has_hazards(BufferState const &src, BufferState const &dst) const noexcept;
+
     [[nodiscard]] ImageBarrier resolve_access_hazard(ImageID image, ImageTouch const &src, ImageTouch const &dst,
                                                      ImageTrackedInfo const &trackedInfo) const noexcept;
 
