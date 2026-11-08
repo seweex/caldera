@@ -263,9 +263,11 @@ template <class TagTy> void print_barrier_group(auto const &group) {
         std::cout << "  Stages: " << vk::to_string(barrier.srcStageMask) << " ==> "
                   << vk::to_string(barrier.dstStageMask) << "\n";
 
-        if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+        if constexpr (std::same_as<TagTy, caldera::ImageTag>) {
             std::cout << "  Layout: " << vk::to_string(barrier.oldLayout) << " ==> " << vk::to_string(barrier.newLayout)
                       << "\n";
+            std::cout << "  Aspects: " << vk::to_string(barrier.subresourceRange.aspectMask) << "\n";
+        }
 
         std::cout << "  Family: " << barrier.srcQueueFamilyIndex << " ==> " << barrier.dstQueueFamilyIndex << "\n";
     }
@@ -335,6 +337,8 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
         memory.submittablePasses.emplace_back(
             pass.familyIdx, cmd,
             std::span{memory.passDependencies.data() + pass.passDependencyOffset, pass.passDependencySize});
+
+        context.resourceMap->bind_resource_filters({}, {}, {});
     }
 
     ::dump_resource_states<ImageTag>(*context.stateManager, *context.resourceMap, graph.m_compiled, graph.m_families);
