@@ -86,6 +86,9 @@ enum class ImageUsage {
     /// @brief Image is used as a resolve attachment
     resolve_attachment,
 
+    /// @brief Image is used as a presentable image
+    present,
+
     /// @brief Image is used by host
     host
 };

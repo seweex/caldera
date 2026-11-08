@@ -43,6 +43,8 @@ namespace {
         return Stage::eFragmentShader;
     case ImageUsage::resolve_attachment:
         return Stage::eColorAttachmentOutput;
+    case ImageUsage::present:
+        return Stage::eBottomOfPipe;
     case ImageUsage::host:
         return Stage::eHost;
     default:
@@ -82,6 +84,10 @@ namespace {
     case ImageUsage::resolve_attachment:
         assert(access == AccessKind::write);
         return Layout::eColorAttachmentOptimal;
+
+    case ImageUsage::present:
+        assert(access == AccessKind::read);
+        return Layout::ePresentSrcKHR;
 
     case ImageUsage::host:
         return Layout::eGeneral;
@@ -145,6 +151,10 @@ namespace {
     case ImageUsage::resolve_attachment:
         assert(access == AccessKind::write);
         return Access::eColorAttachmentWrite;
+
+    case ImageUsage::present:
+        assert(access == AccessKind::read);
+        return {};
 
     case ImageUsage::host:
         switch (access) {
