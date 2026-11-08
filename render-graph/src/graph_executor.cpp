@@ -335,6 +335,8 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
         memory.submittablePasses.emplace_back(
             pass.familyIdx, cmd,
             std::span{memory.passDependencies.data() + pass.passDependencyOffset, pass.passDependencySize});
+
+        context.resourceMap->bind_resource_filters({}, {}, {});
     }
 
     ::dump_resource_states<ImageTag>(*context.stateManager, *context.resourceMap, graph.m_compiled, graph.m_families);
