@@ -280,7 +280,8 @@ template <class TableTy> [[nodiscard]] inline TableTy make_tracking_table(auto c
             tracked.usages |= translator.translate_to_usage_flags(version.writing);
 
             if constexpr (requires { tracked.aspect; })
-                tracked.aspect |= translator.translate_to_aspect_mask(version.writing);
+                if (version.writing.passIdx != UINT32_MAX)
+                    tracked.aspect |= translator.translate_to_aspect_mask(version.writing);
 
             for (auto const &reading : version.readingList) {
                 tracked.usages |= translator.translate_to_usage_flags(reading);
