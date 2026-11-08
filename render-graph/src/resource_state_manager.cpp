@@ -5,9 +5,9 @@
 #include <caldera/structs.hpp>
 
 namespace {
-template <class TagTy>
+template <class HandleTy>
 [[nodiscard]] constexpr auto make_unknown_state() noexcept {
-    if constexpr (std::same_as<TagTy, caldera::ImageTag>)
+    if constexpr (std::same_as<HandleTy, vk::Image>)
         return caldera::ImageState{
             .stages = vk::PipelineStageFlagBits2::eAllCommands,
             .access = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
@@ -22,33 +22,21 @@ template <class TagTy>
         };
 }
 
-template <class TagTy>
-void dump(auto &list, caldera::BasicResourceID<TagTy> const id, auto const &state) {
-    assert(!id.isTransient && "can not dump for a transient resources");
-
-    if (list.size() <= id.index)
-        list.resize(id.index + 1, make_unknown_state<TagTy>());
-
-    list[id.index] = state;
-}
-
-template <class TagTy>
-[[nodiscard]] auto get(auto const &list, caldera::BasicResourceID<TagTy> const id) {
-    assert(!id.isTransient && "can not get for a transient resources");
-
-    if (list.size() <= id.index)
-        return make_unknown_state<TagTy>();
-
-    return list[id.index];
+template <class HandleTy>
+[[nodiscard]] auto get(auto const &map, HandleTy const handle) {
+    if (auto const iter = map.find(handle); iter != map.end())
+        return iter->second;
+    else
+        return make_unknown_state<HandleTy>();
 }
 } // namespace
 
 namespace caldera {
-void ResourceStateManager::dump(ImageID const id, ImageState const &state) { ::dump(m_imageTouches, id, state); }
+void ResourceStateManager::dump(vk::Image const image, ImageState const &state) { m_imageStates[image] = state; }
 
-void ResourceStateManager::dump(BufferID const id, BufferState const &state) { ::dump(m_bufferTouches, id, state); }
+void ResourceStateManager::dump(vk::Buffer const buffer, BufferState const &state) { m_bufferStates[buffer] = state; }
 
-ImageState ResourceStateManager::get_last_state(ImageID const id) const { return ::get(m_imageTouches, id); }
+ImageState ResourceStateManager::get_last_state(vk::Image const image) const { return ::get(m_imageStates, image); }
 
-BufferState ResourceStateManager::get_last_state(BufferID const id) const { return ::get(m_bufferTouches, id); }
+BufferState ResourceStateManager::get_last_state(vk::Buffer const buffer) const { return ::get(m_bufferStates, buffer); }
 } // namespace caldera

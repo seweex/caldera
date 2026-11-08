@@ -2,6 +2,7 @@
 
 #include <caldera/fwd.hpp>
 #include <vector>
+#include <flat_map>
 
 namespace caldera {
 /**
@@ -11,39 +12,39 @@ namespace caldera {
 class ResourceStateManager {
   public:
     /**
-     * @brief Maps an image state to the image ID
+     * @brief Maps an image state to the image handle
      *
-     * @param id Image ID to map the last state to
+     * @param image Image handle to map the last state to
      * @param state State of the specified image
      */
-    void dump(ImageID id, ImageState const &state);
+    void dump(vk::Image image, ImageState const &state);
 
     /**
-     * @brief Maps a buffer state to the buffer ID
+     * @brief Maps a buffer state to the buffer handle
      *
-     * @param id Buffer ID to map the last state to
+     * @param buffer Buffer handle to map the last state to
      * @param state State of the specified buffer
      */
-    void dump(BufferID id, BufferState const &state);
+    void dump(vk::Buffer buffer, BufferState const &state);
 
     /**
      * @brief Gets the image state mapped to the specified image
      *
-     * @param id Image ID to get the state mapped to
+     * @param image Image handle to get the state mapped to
      * @return Last image state if was dumped, otherwise initial image state
      */
-    [[nodiscard]] ImageState get_last_state(ImageID id) const;
+    [[nodiscard]] ImageState get_last_state(vk::Image image) const;
 
     /**
      * @brief Gets the buffer state mapped to the specified buffer
      *
-     * @param id Buffer ID to get the state mapped to
+     * @param buffer Buffer handle to get the state mapped to
      * @return Last buffer state if was dumped, otherwise initial buffer state
      */
-    [[nodiscard]] BufferState get_last_state(BufferID id) const;
+    [[nodiscard]] BufferState get_last_state(vk::Buffer buffer) const;
 
   private:
-    std::vector<ImageState> m_imageTouches;
-    std::vector<BufferState> m_bufferTouches;
+    std::flat_map<vk::Image, ImageState> m_imageStates;
+    std::flat_map<vk::Buffer, BufferState> m_bufferStates;
 };
 } // namespace caldera
