@@ -279,7 +279,7 @@ template <class TagTy>
             .size = desc.size, .alignment = desc.alignment, .memoryTypeBits = desc.memoryTypeBits};
 
         VmaAllocationCreateInfo const createInfo{.flags = desc.createFlags,
-                                                 .usage = VMA_MEMORY_USAGE_AUTO,
+                                                 .usage = VMA_MEMORY_USAGE_UNKNOWN,
                                                  .requiredFlags = desc.requiredFlags,
                                                  .preferredFlags = desc.preferredFlags,
                                                  .memoryTypeBits = desc.memoryTypeBits,
