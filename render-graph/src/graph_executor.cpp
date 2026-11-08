@@ -59,7 +59,7 @@ generate_one_initial_barrier(caldera::ImageID const image, caldera::detail::Imag
                              caldera::ResourceStateManager const &stateManager, caldera::ResourceMap const &resourceMap,
                              caldera::FamilyNumbers const &families) {
     auto const handle = resourceMap.at(image);
-    auto const srcState = stateManager.get_last_state(image);
+    auto const srcState = stateManager.get_last_state(handle);
     auto const dstTate = translate_to_state(trackedInfo.firstTouch, families);
 
     caldera::detail::AccessResolver constexpr resolver{};
@@ -96,7 +96,7 @@ generate_one_initial_barrier(caldera::BufferID const buffer, caldera::detail::Bu
                              caldera::ResourceStateManager const &stateManager, caldera::ResourceMap const &resourceMap,
                              caldera::FamilyNumbers const &families) {
     auto const handle = resourceMap.at(buffer);
-    auto const srcState = stateManager.get_last_state(buffer);
+    auto const srcState = stateManager.get_last_state(handle);
     auto const dstTate = translate_to_state(trackedInfo.firstTouch, families);
 
     caldera::detail::AccessResolver constexpr resolver{};
@@ -235,7 +235,7 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
 }
 
 template <typename TagTy>
-void dump_resource_states(caldera::ResourceStateManager &manager, caldera::detail::CompiledGraph const &graph,
+void dump_resource_states(caldera::ResourceStateManager &manager, caldera::ResourceMap const& resourceMap, caldera::detail::CompiledGraph const &graph,
                           caldera::FamilyNumbers const &families) {
     auto const &trackedResources = std::invoke([&]() -> auto const & {
         if constexpr (std::same_as<TagTy, caldera::ImageTag>)
@@ -246,7 +246,8 @@ void dump_resource_states(caldera::ResourceStateManager &manager, caldera::detai
 
     for (auto const &[resourceID, state] : trackedResources)
         if (!resourceID.isTransient) {
-            manager.dump(resourceID, ::translate_to_state(state.lastTouch, families));
+            auto const handle = resourceMap.at(resourceID);
+            manager.dump(handle, ::translate_to_state(state.lastTouch, families));
         }
 }
 #ifndef NDEBUG
@@ -336,8 +337,8 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
             std::span{memory.passDependencies.data() + pass.passDependencyOffset, pass.passDependencySize});
     }
 
-    ::dump_resource_states<ImageTag>(*context.stateManager, graph.m_compiled, graph.m_families);
-    ::dump_resource_states<BufferTag>(*context.stateManager, graph.m_compiled, graph.m_families);
+    ::dump_resource_states<ImageTag>(*context.stateManager, *context.resourceMap, graph.m_compiled, graph.m_families);
+    ::dump_resource_states<BufferTag>(*context.stateManager, *context.resourceMap, graph.m_compiled, graph.m_families);
 
     result.passes = std::span{memory.submittablePasses};
     return result;
