@@ -432,7 +432,8 @@ inline void append_with_init_resources(CompiledGraph &graph, auto const resource
     passInitResources.resize(passCount);
 
     for (auto const &[resourceID, trackedInfo] : trackingTable)
-        passInitResources[trackedInfo.firstTouch.passIdx].emplace_back(resourceID);
+        if (!resourceID.isTransient)
+            passInitResources[trackedInfo.firstTouch.passIdx].emplace_back(resourceID);
 
     for (auto &resourceList : passInitResources) {
         std::ranges::sort(resourceList);
