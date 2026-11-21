@@ -12,6 +12,25 @@ namespace caldera {
 class GraphExecutor {
   public:
     /**
+     * @brief Enables debug labels in command buffers
+     *
+     * @tparam DispatcherTy Type of vulkan dispatcher
+     * @param d Vulkan dispatcher with the vkCmdBeginDebugUtilsLabelEXT
+     * and vkCmdEndDebugUtilsLabelEXT functions
+     */
+    template <class DispatcherTy = VULKAN_HPP_DEFAULT_DISPATCHER_TYPE>
+    void enable_debug_labels(DispatcherTy const &d = VULKAN_HPP_DEFAULT_DISPATCHER) {
+        m_vkCmdBeginDebugUtilsLabelEXT = d.vkCmdBeginDebugUtilsLabelEXT;
+        m_vkCmdEndDebugUtilsLabelEXT = d.vkCmdEndDebugUtilsLabelEXT;
+
+        assert((m_vkCmdBeginDebugUtilsLabelEXT == nullptr) == (nullptr == m_vkCmdEndDebugUtilsLabelEXT) &&
+               "failed to get proc addresses: specified dispatcher doesn't provide required functions");
+    }
+
+    /// @brief Disables debug labels in command buffers
+    void disable_debug_labels() noexcept;
+
+    /**
      * @brief Executes a render graph object in a user-specified environment
      *
      * @param graph Render graph to execute
@@ -34,5 +53,9 @@ class GraphExecutor {
      */
     [[nodiscard]] std::expected<SubmittableGraph, vk::Result>
     execute(RenderGraph const &graph, ExecutionContext const &context, ExecutionMemory &memory);
+
+  private:
+    PFN_vkCmdBeginDebugUtilsLabelEXT m_vkCmdBeginDebugUtilsLabelEXT = nullptr;
+    PFN_vkCmdEndDebugUtilsLabelEXT m_vkCmdEndDebugUtilsLabelEXT = nullptr;
 };
 } // namespace caldera
