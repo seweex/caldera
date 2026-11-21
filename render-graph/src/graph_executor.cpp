@@ -129,6 +129,11 @@ generate_one_initial_barrier(caldera::BufferID const buffer, caldera::detail::Bu
 } // namespace
 
 namespace {
+struct DebugLabelsPFNs {
+    PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT;
+    PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT;
+};
+
 void prepare_execution_memory(caldera::ExecutionMemory &memory, caldera::detail::CompiledGraph const &graph) {
     memory.imageTranslatedBarriers.clear();
     memory.bufferTranslatedBarriers.clear();
@@ -186,9 +191,36 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
     memory.passDependencies.assign(graph.passDependencies.begin(), graph.passDependencies.end());
 }
 
+void begin_label(vk::CommandBuffer const cmd, std::string const &title, DebugLabelsPFNs const &labelsFns) {
+    if (!labelsFns.vkCmdBeginDebugUtilsLabelEXT || !labelsFns.vkCmdEndDebugUtilsLabelEXT)
+        return;
+
+    auto const hash = std::hash<std::string>{}(title);
+
+    auto const r = static_cast<float>((hash >> 0) & 0xFF) / 255.0f;
+    auto const g = static_cast<float>((hash >> 8) & 0xFF) / 255.0f;
+    auto const b = static_cast<float>((hash >> 16) & 0xFF) / 255.0f;
+
+    constexpr auto min_color = 0.35f;
+    constexpr auto range = 0.50f;
+
+    VkDebugUtilsLabelEXT const labelInfo{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        .pNext = nullptr,
+        .pLabelName = title.c_str(),
+        .color = {min_color + r * range, min_color + g * range, min_color + b * range, 1.f}};
+
+    labelsFns.vkCmdBeginDebugUtilsLabelEXT(cmd, &labelInfo);
+}
+
+void end_label(vk::CommandBuffer const cmd, DebugLabelsPFNs const &labelsFns) {
+    if (labelsFns.vkCmdBeginDebugUtilsLabelEXT && labelsFns.vkCmdEndDebugUtilsLabelEXT)
+        labelsFns.vkCmdEndDebugUtilsLabelEXT(cmd);
+}
+
 [[nodiscard]] vk::Result process_cmd(vk::CommandBuffer const cmd, caldera::ExecutionMemory const &memory,
-                                     caldera::ResourceMap const &resourceMap,
-                                     caldera::detail::CompiledPass const &pass) {
+                                     caldera::ResourceMap const &resourceMap, caldera::detail::CompiledPass const &pass,
+                                     DebugLabelsPFNs const &labelsFns) {
     auto const applyInitBarriers = [&] {
         vk::DependencyInfo const dependencyInfo{{},
                                                 0,
@@ -219,6 +251,7 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
         rCode < vk::Result::eSuccess)
         return rCode;
 
+    begin_label(cmd, pass.name, labelsFns);
     applyInitBarriers();
     applyBakedBarriers(memory.imageTranslatedBarriers, memory.bufferTranslatedBarriers, pass.imagePreBarrierOffset,
                        pass.imagePreBarrierSize, pass.bufferPreBarrierOffset, pass.bufferPreBarrierSize);
@@ -227,6 +260,7 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
 
     applyBakedBarriers(memory.imageTranslatedBarriers, memory.bufferTranslatedBarriers, pass.imagePostBarrierOffset,
                        pass.imagePostBarrierSize, pass.bufferPostBarrierOffset, pass.bufferPostBarrierSize);
+    end_label(cmd, labelsFns);
 
     if (auto const rCode = cmd.end(); rCode < vk::Result::eSuccess)
         return rCode;
@@ -235,8 +269,8 @@ void copy_pass_dependencies(caldera::ExecutionMemory &memory, caldera::detail::C
 }
 
 template <typename TagTy>
-void dump_resource_states(caldera::ResourceStateManager &manager, caldera::ResourceMap const& resourceMap, caldera::detail::CompiledGraph const &graph,
-                          caldera::FamilyNumbers const &families) {
+void dump_resource_states(caldera::ResourceStateManager &manager, caldera::ResourceMap const &resourceMap,
+                          caldera::detail::CompiledGraph const &graph, caldera::FamilyNumbers const &families) {
     auto const &trackedResources = std::invoke([&]() -> auto const & {
         if constexpr (std::same_as<TagTy, caldera::ImageTag>)
             return graph.trackedImages;
@@ -297,6 +331,11 @@ void print_pass_barriers(caldera::ExecutionMemory const &memory, caldera::detail
 } // namespace
 
 namespace caldera {
+void GraphExecutor::disable_debug_labels() noexcept {
+    m_vkCmdBeginDebugUtilsLabelEXT = nullptr;
+    m_vkCmdEndDebugUtilsLabelEXT = nullptr;
+}
+
 std::expected<SubmittableGraph, vk::Result>
 GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context, ExecutionMemory &memory) {
     assert(graph && "graph must not be empty");
@@ -307,10 +346,12 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
     ::translate_compiled_barriers(memory, graph.m_compiled, *context.resourceMap);
     ::copy_pass_dependencies(memory, graph.m_compiled);
 
+    DebugLabelsPFNs const labelFuncs{.vkCmdBeginDebugUtilsLabelEXT = m_vkCmdBeginDebugUtilsLabelEXT,
+                                     .vkCmdEndDebugUtilsLabelEXT = m_vkCmdEndDebugUtilsLabelEXT};
+
     SubmittableGraph result;
 
-    for (uint32_t passIdx = 0; passIdx < graph.m_compiled.compiledPasses.size(); ++passIdx)
-    {
+    for (uint32_t passIdx = 0; passIdx < graph.m_compiled.compiledPasses.size(); ++passIdx) {
         auto const &pass = graph.m_compiled.compiledPasses[passIdx];
 
         ::generate_initial_barriers_for_pass(
@@ -330,7 +371,8 @@ GraphExecutor::execute(RenderGraph const &graph, ExecutionContext const &context
 
         auto const cmd = context.distributor->take_buffer(pass.familyIdx);
 
-        if (auto const rCode = ::process_cmd(cmd, memory, *context.resourceMap, pass); rCode < vk::Result::eSuccess) {
+        if (auto const rCode = ::process_cmd(cmd, memory, *context.resourceMap, pass, labelFuncs);
+            rCode < vk::Result::eSuccess) {
             return std::unexpected(rCode);
         }
 
