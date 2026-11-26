@@ -404,17 +404,6 @@ struct SubmittableGraph {
     std::span<Pass> passes;
 };
 
-/**
- * @brief Context of execution
- * @note All pointers in this structure are non-owning and must
- * refer to valid managers
- */
-struct ExecutionContext {
-    ResourceMap *resourceMap;
-    ResourceStateManager *stateManager;
-    CommandBufferDistributor *distributor;
-};
-
 /// @brief Execution cache memory to avoid dynamic allocations
 struct ExecutionMemory {
     std::vector<vk::ImageMemoryBarrier2> imageTranslatedBarriers;
