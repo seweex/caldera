@@ -15,3 +15,4 @@
 #include "command_buffer_distributor.hpp"
 #include "resource_map.hpp"
 #include "resource_state_manager.hpp"
+#include "user_context.hpp"
