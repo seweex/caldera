@@ -34,7 +34,6 @@ struct ImageState;
 struct BufferState;
 struct GraphIR;
 struct SubmittableGraph;
-struct ExecutionContext;
 struct ExecutionMemory;
 struct SemaphoreSyncPoint;
 
@@ -46,6 +45,7 @@ class RenderGraph;
 class ResourceMap;
 class ResourceStateManager;
 class GraphProperties;
+class UserContext;
 } // namespace caldera
 
 namespace caldera::detail {
